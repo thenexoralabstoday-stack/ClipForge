@@ -365,7 +365,8 @@
   async function analyzeMoments() {
     document.getElementById('status').textContent = 'Analyzing video for meme moments...';
     try {
-      const res = await fetch(`/api/analyze-moments/${jobId}`, {
+      const res = await fetch(`/api/meme-sounds/analyze/${jobId}`, {
+        method: 'POST',
         headers: { Authorization: 'Bearer ' + localStorage.getItem('clipforge_token') },
       });
       const data = await res.json();

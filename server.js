@@ -29,6 +29,7 @@ const PLANS = {
   free: { minutes: 60, watermark: true, price: 0 },
   starter: { minutes: 150, watermark: false, price: 19 },
   pro: { minutes: 500, watermark: false, price: 49 },
+  admin: { minutes: Infinity, watermark: false, price: 0 },
 };
 
 function ensureDataDir() {
@@ -190,7 +191,8 @@ app.get('/api/usage', (req, res) => {
     const user = getUser(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     const plan = PLANS[user.plan] || PLANS.free;
-    res.json({ minutesUsed: user.minutesUsed || 0, minutesLimit: plan.minutes, clipsCreated: user.clipsCreated || 0, plan: user.plan });
+    const limit = user.plan === 'admin' ? Infinity : plan.minutes;
+    res.json({ minutesUsed: user.minutesUsed || 0, minutesLimit: limit, clipsCreated: user.clipsCreated || 0, plan: user.plan });
   } catch (e) {
     res.status(401).json({ error: 'Invalid token' });
   }
@@ -303,7 +305,7 @@ app.post('/api/jobs', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const plan = PLANS[user.plan] || PLANS.free;
-    if ((user.minutesUsed || 0) >= plan.minutes) {
+    if (user.plan !== 'admin' && (user.minutesUsed || 0) >= plan.minutes) {
       return res.status(402).json({ error: 'Monthly limit reached. Please upgrade.' });
     }
 
@@ -528,11 +530,11 @@ async function runJob(id, body) {
     const clipsJson = JSON.parse(fs.readFileSync(clipsJsonPath, 'utf8'));
     const user = getUser(job.userId);
     const plan = PLANS[user?.plan] || PLANS.free;
-    const maxDuration = plan.watermark ? 30 : 60;
+    const maxDuration = user?.plan === 'admin' ? Infinity : (plan.watermark ? 30 : 60);
     job.clips = clipsJson.clips.map((c, i) => ({
       ...c,
       url: `/output/${path.basename(result.workDir)}/clips/clip-${String(i + 1).padStart(2, '0')}.mp4`,
-      watermark: plan.watermark,
+      watermark: user?.plan === 'admin' ? false : plan.watermark,
     }));
     job.clipsCount = clipsJson.clips.length;
     const totalDuration = clipsJson.clips.reduce((sum, c) => sum + ((c.end || 0) - (c.start || 0)), 0);

@@ -5,6 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="clipforge-api-base" content="/api">
 <title>ClipForge — Forge the Moment</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -1997,7 +1998,7 @@
 </div>
 
 <script>
-  const API = '/api';
+  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
   let token = localStorage.getItem('clipforge_token');
   let user = JSON.parse(localStorage.getItem('clipforge_user') || 'null');
   let currentJob = null;
@@ -2241,7 +2242,7 @@
     const message = $('contactMessage').value.trim();
     if (!name || !email || !message) return showToast('Please fill all fields', 'error');
     try {
-      const res = await fetch('/api/contact', {
+      const res = await fetch(API + '/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, message }),

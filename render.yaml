@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    branch: main
+    branch: master
     rootDir: .
     buildCommand: npm install
     startCommand: node src/cli.js ui

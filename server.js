@@ -79,6 +79,17 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+app.post('/api/admin/setup', (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
+  const users = readUsers();
+  if (users[email]) return res.status(400).json({ error: 'User already exists' });
+  const id = email;
+  users[id] = { id, name, email, password: hashPassword(password), plan: 'admin', minutesUsed: 0, clipsCreated: 0, createdAt: Date.now() };
+  writeUsers(users);
+  res.json({ ok: true, user: { id, name, email, plan: 'admin' } });
+});
+
 app.post('/api/contact', (req, res) => {
   const { name, email, message } = req.body || {};
   if (!name || !email || !message) return res.status(400).json({ error: 'All fields are required' });

@@ -1,0 +1,212 @@
+{
+  "language": "en",
+  "segments": [
+    {
+      "start": 0,
+      "end": 20,
+      "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24 word25 word26 word27 word28 word29 word30 word31 word32 word33 word34 word35 word36 word37 word38 word39",
+      "words": [
+        {
+          "start": 0,
+          "end": 0.4,
+          "word": "word0"
+        },
+        {
+          "start": 0.5,
+          "end": 0.9,
+          "word": "word1"
+        },
+        {
+          "start": 1,
+          "end": 1.4,
+          "word": "word2"
+        },
+        {
+          "start": 1.5,
+          "end": 1.9,
+          "word": "word3"
+        },
+        {
+          "start": 2,
+          "end": 2.4,
+          "word": "word4"
+        },
+        {
+          "start": 2.5,
+          "end": 2.9,
+          "word": "word5"
+        },
+        {
+          "start": 3,
+          "end": 3.4,
+          "word": "word6"
+        },
+        {
+          "start": 3.5,
+          "end": 3.9,
+          "word": "word7"
+        },
+        {
+          "start": 4,
+          "end": 4.4,
+          "word": "word8"
+        },
+        {
+          "start": 4.5,
+          "end": 4.9,
+          "word": "word9"
+        },
+        {
+          "start": 5,
+          "end": 5.4,
+          "word": "word10"
+        },
+        {
+          "start": 5.5,
+          "end": 5.9,
+          "word": "word11"
+        },
+        {
+          "start": 6,
+          "end": 6.4,
+          "word": "word12"
+        },
+        {
+          "start": 6.5,
+          "end": 6.9,
+          "word": "word13"
+        },
+        {
+          "start": 7,
+          "end": 7.4,
+          "word": "word14"
+        },
+        {
+          "start": 7.5,
+          "end": 7.9,
+          "word": "word15"
+        },
+        {
+          "start": 8,
+          "end": 8.4,
+          "word": "word16"
+        },
+        {
+          "start": 8.5,
+          "end": 8.9,
+          "word": "word17"
+        },
+        {
+          "start": 9,
+          "end": 9.4,
+          "word": "word18"
+        },
+        {
+          "start": 9.5,
+          "end": 9.9,
+          "word": "word19"
+        },
+        {
+          "start": 10,
+          "end": 10.4,
+          "word": "word20"
+        },
+        {
+          "start": 10.5,
+          "end": 10.9,
+          "word": "word21"
+        },
+        {
+          "start": 11,
+          "end": 11.4,
+          "word": "word22"
+        },
+        {
+          "start": 11.5,
+          "end": 11.9,
+          "word": "word23"
+        },
+        {
+          "start": 12,
+          "end": 12.4,
+          "word": "word24"
+        },
+        {
+          "start": 12.5,
+          "end": 12.9,
+          "word": "word25"
+        },
+        {
+          "start": 13,
+          "end": 13.4,
+          "word": "word26"
+        },
+        {
+          "start": 13.5,
+          "end": 13.9,
+          "word": "word27"
+        },
+        {
+          "start": 14,
+          "end": 14.4,
+          "word": "word28"
+        },
+        {
+          "start": 14.5,
+          "end": 14.9,
+          "word": "word29"
+        },
+        {
+          "start": 15,
+          "end": 15.4,
+          "word": "word30"
+        },
+        {
+          "start": 15.5,
+          "end": 15.9,
+          "word": "word31"
+        },
+        {
+          "start": 16,
+          "end": 16.4,
+          "word": "word32"
+        },
+        {
+          "start": 16.5,
+          "end": 16.9,
+          "word": "word33"
+        },
+        {
+          "start": 17,
+          "end": 17.4,
+          "word": "word34"
+        },
+        {
+          "start": 17.5,
+          "end": 17.9,
+          "word": "word35"
+        },
+        {
+          "start": 18,
+          "end": 18.4,
+          "word": "word36"
+        },
+        {
+          "start": 18.5,
+          "end": 18.9,
+          "word": "word37"
+        },
+        {
+          "start": 19,
+          "end": 19.4,
+          "word": "word38"
+        },
+        {
+          "start": 19.5,
+          "end": 19.9,
+          "word": "word39"
+        }
+      ]
+    }
+  ]
+}

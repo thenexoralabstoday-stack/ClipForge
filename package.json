@@ -1,0 +1,27 @@
+{
+  "name": "clipforge",
+  "version": "1.0.0",
+  "description": "Turn long videos into captioned 9:16 Shorts, Reels and TikToks: download, transcribe, AI-pick highlights, render with ffmpeg.",
+  "type": "module",
+  "copyright": "Copyright (c) 2026 Nexora Labs. All rights reserved.",
+  "bin": {
+    "clipforge": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "ui": "node src/cli.js ui",
+    "test": "node test/pipeline.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "groq-sdk": "^1.6.0",
+    "jsonwebtoken": "^9.0.3",
+    "stripe": "^22.6.2",
+    "zod": "^3.24.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+.env
+data/
+output/
+test/fixtures/sample.mp4
+test/fixtures/out.mp4
+test/fixtures/dryrun-workdir/

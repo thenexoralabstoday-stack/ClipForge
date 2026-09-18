@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset=`"UTF-8`"><meta name=`"clipforge-api-base`" content=`"https://clipforge-ouco.onrender.com/api`">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClipForge — Meme Sound Dashboard</title>
 <style>
@@ -120,26 +120,50 @@
   }
 
   .sound-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     padding: 1.25rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sound-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
   }
 
   .sound-card:hover {
-    border-color: var(--fire2);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.1);
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+  }
+
+  .sound-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
   }
 
   .sound-card.selected {
     border-color: var(--fire);
     background: rgba(255, 61, 0, 0.08);
-    box-shadow: 0 0 20px rgba(255, 61, 0, 0.15);
+    box-shadow: 0 0 30px rgba(255, 61, 0, 0.2);
+  }
+
+  .sound-card.selected::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.6), rgba(255, 157, 0, 0.3));
   }
 
   .sound-name { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
@@ -148,23 +172,42 @@
 
   .clips-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
   }
 
   .clip-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     overflow: hidden;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+
+  .clip-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
   }
 
   .clip-card:hover {
-    border-color: var(--fire2);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(255, 61, 0, 0.12);
+  }
+
+  .clip-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
   }
 
   .clip-thumb {
@@ -176,7 +219,7 @@
   }
 
   .clip-body { padding: 1.25rem; }
-  .clip-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 1rem; }
+  .clip-title { font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem; letter-spacing: -0.01em; }
   .clip-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
 
   .moments-list {
@@ -215,30 +258,30 @@
   .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
   .btn {
-    padding: 0.6rem 1rem;
+    padding: 12px 24px;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    transition: all 0.3s;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     font-family: inherit;
   }
 
   .btn-primary {
     background: var(--gradient);
     color: white;
-    box-shadow: 0 4px 16px rgba(255, 61, 0, 0.25);
+    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
   }
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
   }
 
   .btn-success { background: var(--success); color: white; }
@@ -250,10 +293,10 @@
   .preview-section {
     margin-top: 1.5rem;
     padding: 1.5rem;
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
   }
 
   .preview-section h3 { margin-top: 0; font-size: 1rem; font-weight: 700; }
@@ -261,10 +304,10 @@
   .example-video {
     margin-top: 2rem;
     padding: 1.5rem;
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
   }
 
   .example-video h3 { margin-top: 0; font-size: 1rem; font-weight: 700; }
@@ -285,6 +328,12 @@
   .volume-control label { font-size: 0.8rem; color: var(--muted); min-width: 60px; }
   .volume-control input { flex: 1; }
 
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
     header { padding: 1rem; flex-wrap: wrap; gap: 0.75rem; }
@@ -303,7 +352,7 @@
   </div>
   <button class="btn btn-primary" onclick="applyAllSounds()">Apply All Sounds</button>
 </header>
-<div class="container">
+<div class="container fade-in-up">
   <div class="status" id="status">Loading meme sounds...</div>
   
   <div class="section">
@@ -330,13 +379,14 @@
 
 <script>
   const jobId = new URLSearchParams(window.location.search).get('job') || 'video';
+  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
   let clips = [];
   let memeSounds = [];
   let selectedSounds = new Set();
   let clipMoments = {};
 
   async function loadMemeSounds() {
-    const res = await fetch('/api/meme-sounds');
+    const res = await fetch(API + '/meme-sounds');
     const data = await res.json();
     memeSounds = data.sounds || [];
     renderSounds();
@@ -365,7 +415,7 @@
   async function analyzeMoments() {
     document.getElementById('status').textContent = 'Analyzing video for meme moments...';
     try {
-      const res = await fetch(`/api/meme-sounds/analyze/${jobId}`, {
+      const res = await fetch(API + `/meme-sounds/analyze/${jobId}`, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + localStorage.getItem('clipforge_token') },
       });
@@ -380,8 +430,8 @@
 
   function renderMoments() {
     const grid = document.getElementById('clips');
-    grid.innerHTML = Object.entries(clipMoments).map(([clipIdx, moments]) => `
-      <div class="clip-card">
+    grid.innerHTML = Object.entries(clipMoments).map(([clipIdx, moments], i) => `
+      <div class="clip-card fade-in-up" style="animation-delay: ${i * 0.05}s">
         <img class="clip-thumb" src="/output/${jobId}/clips/clip-${String(parseInt(clipIdx) + 1).padStart(2, '0')}.jpg" alt="thumbnail">
         <div class="clip-body">
           <div class="clip-title">Clip ${parseInt(clipIdx) + 1}</div>

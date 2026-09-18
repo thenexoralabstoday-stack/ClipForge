@@ -5,6 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="clipforge-api-base" content="https://clipforge-ouco.onrender.com/api">
 <title>ClipForge — Project</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -236,25 +237,353 @@
     border: 1px solid var(--border);
   }
 
-  .status-badge.ready { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
-  .status-badge.processing { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
-  .status-badge.error { background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3); }
+  .status-badge.ready { background: rgba(16, 185, 129, 0.12); color: var(--success); border-color: rgba(16, 185, 129, 0.35); }
+  .status-badge.processing { background: rgba(245, 158, 11, 0.12); color: var(--warning); border-color: rgba(245, 158, 11, 0.35); }
+  .status-badge.error { background: rgba(239, 68, 68, 0.12); color: var(--error); border-color: rgba(239, 68, 68, 0.35); }
+  .status-badge.rendering { background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.35); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: rgba(26, 15, 10, 0.65);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: all 0.3s;
+  }
+
+  .stat-card:hover {
+    border-color: var(--fire2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.08);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    margin-top: 0.25rem;
+  }
+
+  .clip-card {
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .clip-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 61, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
+  }
+
+  .clip-card:hover {
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateX(6px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+  }
+
+  .clip-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
+  }
+
+  .clip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .clip-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
+  }
+
+  .clip-meta {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .clip-score {
+    font-size: 1.75rem;
+    font-weight: 900;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .clip-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--fire), var(--fire2), var(--fire3));
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: 3px;
+    box-shadow: 0 0 16px rgba(255, 61, 0, 0.5);
+    background-size: 200% 100%;
+    animation: gradient 3s linear infinite;
+  }
 
   .empty-state {
     text-align: center;
-    padding: 4rem 2rem;
+    padding: 5rem 2rem;
     color: var(--muted);
+  }
+
+  .empty-state-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
   }
 
   .empty-state h3 {
     color: var(--text);
     margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
   }
 
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(16px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .modal.active {
+    display: flex;
+    opacity: 1;
+  }
+
+  .modal-content {
+    background: rgba(26, 15, 10, 0.95);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 2.5rem;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+    transform: translateY(20px) scale(0.98);
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .modal.active .modal-content {
+    transform: translateY(0) scale(1);
+  }
+
+  .modal-content h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 0.5rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.3s;
+    outline: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    border-color: var(--fire2);
+    box-shadow: 0 0 0 3px rgba(255, 61, 0, 0.08), 0 0 20px rgba(255, 61, 0, 0.08);
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    background: var(--gradient);
+    color: white;
+    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    background: rgba(36, 22, 16, 0.8);
+    color: var(--text);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--fire2);
+    color: var(--fire3);
+    background: rgba(36, 22, 16, 1);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  /* ─── Animations ─────────────────────────────── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  /* ─── Skeleton Loading ───────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--panel) 25%, var(--panel2) 50%, var(--panel) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+
+  @keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .skeleton-text {
+    height: 12px;
+    margin-bottom: 8px;
+  }
+
+  .skeleton-title {
+    height: 20px;
+    width: 60%;
+    margin-bottom: 12px;
+  }
+
+  /* ─── Loading Spinner ────────────────────────── */
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--fire);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Responsive */
   @media (max-width: 768px) {
     header { padding: 1rem; }
     .container { padding: 1rem; }
     .page-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -272,7 +601,7 @@
   </div>
 </header>
 
-<div class="container">
+<div class="container fade-in-up">
   <div class="page-header">
     <div>
       <h1 class="page-title" id="projectName">Loading...</h1>
@@ -281,6 +610,25 @@
     <div style="display: flex; gap: 1rem;">
       <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeProject()">Analyze Video</button>
       <button class="btn btn-secondary" id="uploadBtn" onclick="showUploadModal()">Upload Source</button>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Total Clips</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statProcessing">0</div>
+      <div class="stat-label">Processing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statRendered">0</div>
+      <div class="stat-label">Rendered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statAvgScore">—</div>
+      <div class="stat-label">Avg Score</div>
     </div>
   </div>
 
@@ -444,10 +792,23 @@
 
       const clipsData = await api(`/projects/${projectId}/clips`);
       const container = $('clipsList');
+      const clips = clipsData.clips || [];
       
-      if (clipsData.clips.length === 0) {
+      const total = clips.length;
+      const processing = clips.filter(c => c.renderStatus === 'rendering' || c.status === 'processing').length;
+      const rendered = clips.filter(c => c.renderStatus === 'done').length;
+      const scores = clips.map(c => c.score).filter(s => s != null);
+      const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+      
+      $('statTotal').textContent = total;
+      $('statProcessing').textContent = processing;
+      $('statRendered').textContent = rendered;
+      $('statAvgScore').textContent = avg;
+      
+      if (total === 0) {
         container.innerHTML = `
           <div class="empty-state">
+            <div class="empty-state-icon">🎬</div>
             <h3>No clips yet</h3>
             <p>Upload a source video and analyze it to generate clips</p>
           </div>
@@ -455,20 +816,23 @@
         return;
       }
 
-      container.innerHTML = clipsData.clips.map((c, i) => `
-        <div class="clip-card">
+      container.innerHTML = clips.map((c, i) => `
+        <div class="clip-card fade-in-up" style="animation-delay: ${i * 0.05}s">
           <div class="clip-header">
             <div>
-              <div class="clip-title">Clip ${i + 1}: ${escapeHtml(c.title || 'Untitled')}</div>
+              <div class="clip-title">${escapeHtml(c.title || 'Clip ' + (i + 1))}</div>
               <div class="clip-meta">${c.start?.toFixed(1)}s - ${c.end?.toFixed(1)}s · Score: ${c.score || '—'}</div>
             </div>
             <div class="clip-score">${c.score || '—'}</div>
           </div>
           <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">${escapeHtml(c.hook || c.reason || '')}</p>
+          <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem;">
+            <span class="status-badge ${c.renderStatus || 'pending'}">${c.renderStatus || 'pending'}</span>
+          </div>
           <div class="clip-actions">
-            <button class="btn btn-primary" onclick="editClip('${c.id}')">Edit</button>
-            <button class="btn btn-secondary" onclick="renderClip('${c.id}')">Render</button>
-            <button class="btn btn-secondary" onclick="deleteClip('${c.id}')">Delete</button>
+            <button class="btn btn-primary btn-sm" onclick="editClip('${c.id}')">Edit</button>
+            <button class="btn btn-secondary btn-sm" onclick="renderClip('${c.id}')">Render</button>
+            <button class="btn btn-secondary btn-sm" onclick="deleteClip('${c.id}')">Delete</button>
           </div>
         </div>
       `).join('');
@@ -480,7 +844,7 @@
   async function editClip(clipId) {
     showToast('Opening editor...', 'info');
     setTimeout(() => {
-      window.location.href = `/editor.html?clip=${clipId}`;
+      window.location.href = `/editor.html?clip=${clipId}&project=${projectId}`;
     }, 500);
   }
 

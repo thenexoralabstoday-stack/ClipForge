@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset=`"UTF-8`"><meta name=`"clipforge-api-base`" content=`"https://clipforge-ouco.onrender.com/api`">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClipForge — Publishing Dashboard</title>
 <style>
@@ -109,20 +109,41 @@
   }
 
   .account-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     padding: 1.25rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .account-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
   }
 
   .account-card:hover {
-    border-color: var(--fire2);
-    transform: translateX(4px);
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateX(6px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+  }
+
+  .account-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
   }
 
   .account-info h3 { margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600; }
@@ -131,30 +152,30 @@
   .disconnected { color: var(--error) !important; }
 
   .btn {
-    padding: 0.6rem 1.25rem;
+    padding: 12px 24px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    transition: all 0.3s;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     font-family: inherit;
   }
 
   .btn-primary {
     background: var(--gradient);
     color: white;
-    box-shadow: 0 4px 16px rgba(255, 61, 0, 0.25);
+    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
   }
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
   }
 
   .btn-success {
@@ -173,23 +194,42 @@
 
   .clips-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
   }
 
   .clip-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     overflow: hidden;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+
+  .clip-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
   }
 
   .clip-card:hover {
-    border-color: var(--fire2);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(255, 61, 0, 0.12);
+  }
+
+  .clip-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
   }
 
   .clip-thumb {
@@ -201,10 +241,16 @@
   }
 
   .clip-body { padding: 1.25rem; }
-  .clip-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 1rem; }
+  .clip-title { font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem; letter-spacing: -0.01em; }
   .clip-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
 
   .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
 
   /* Responsive */
   @media (max-width: 768px) {
@@ -224,7 +270,7 @@
   </div>
   <button class="btn btn-primary" onclick="publishAll()">Publish All Clips</button>
 </header>
-<div class="container">
+<div class="container fade-in-up">
   <div class="section">
     <h2>Connected Accounts</h2>
     <div class="accounts" id="accounts"></div>
@@ -238,6 +284,7 @@
   const jobId = new URLSearchParams(window.location.search).get('job') || 'video';
   let clips = [];
   let social = {};
+const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
 
   async function loadData() {
     await Promise.all([loadClips(), loadSocial()]);
@@ -246,7 +293,7 @@
   }
 
   async function loadClips() {
-    const res = await fetch(`/api/clips/${jobId}`);
+    const res = await fetch(API + `/clips/${jobId}`);
     if (!res.ok) return;
     const data = await res.json();
     clips = data.clips || [];
@@ -255,7 +302,7 @@
   async function loadSocial() {
     const token = localStorage.getItem('clipforge_token');
     if (!token) return;
-    const res = await fetch('/api/auth/social', {
+    const res = await fetch(API + '/auth/social', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
@@ -286,7 +333,7 @@
   function renderClips() {
     const container = document.getElementById('clips');
     container.innerHTML = clips.map((clip, i) => `
-      <div class="clip-card">
+      <div class="clip-card fade-in-up" style="animation-delay: ${i * 0.05}s">
         <img class="clip-thumb" src="/output/${jobId}/clips/clip-${String(i + 1).padStart(2, '0')}.jpg" alt="thumbnail">
         <div class="clip-body">
           <div class="clip-title">${escapeHtml(clip.title || 'Clip ' + (i + 1))}</div>
@@ -308,14 +355,14 @@
   }
 
   async function connect(platform) {
-    const res = await fetch(`/api/auth/${platform}/url`);
+    const res = await fetch(API + `/auth/${platform}/url`);
     const data = await res.json();
     if (data.url) window.open(data.url, '_blank');
   }
 
   async function disconnect(platform) {
     const token = localStorage.getItem('clipforge_token');
-    await fetch(`/api/auth/${platform}/disconnect`, {
+    await fetch(API + `/auth/${platform}/disconnect`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -324,7 +371,7 @@
 
   async function publish(i, platform) {
     const token = localStorage.getItem('clipforge_token');
-    await fetch(`/api/publish/${jobId}/${i}/${platform}`, {
+    await fetch(API + `/publish/${jobId}/${i}/${platform}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset=`"UTF-8`"><meta name=`"clipforge-api-base`" content=`"https://clipforge-ouco.onrender.com/api`">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClipForge — Billing</title>
 <style>
@@ -114,46 +114,60 @@
   }
 
   .stat-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.65);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     padding: 1.5rem;
     text-align: center;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .stat-card:hover {
     border-color: var(--fire2);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.08);
   }
 
   .stat-value {
     font-size: 2rem;
     font-weight: 800;
-    background: var(--gradient2);
+    background: var(--gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    line-height: 1.1;
   }
 
   .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--muted);
     margin-top: 0.5rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
+    letter-spacing: 0.1em;
+    font-weight: 600;
   }
 
   .current-plan {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
-    border: 2px solid var(--fire);
-    border-radius: var(--radius);
+    background: rgba(26, 15, 10, 0.65);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 61, 0, 0.35);
+    border-radius: 16px;
     padding: 2rem;
     margin-bottom: 2rem;
-    box-shadow: 0 0 40px rgba(255, 61, 0, 0.08);
+    box-shadow: 0 0 60px rgba(255, 61, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .current-plan::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient);
   }
 
   .current-plan h2 {
@@ -163,29 +177,50 @@
   }
 
   .plan-card {
-    background: rgba(26, 15, 10, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.3s;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
   }
 
   .plan-card:hover {
-    border-color: var(--fire2);
-    transform: translateX(4px);
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateX(6px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
   }
 
-  .plan-info h3 { margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; }
+  .plan-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
+  }
+
+  .plan-info h3 { margin: 0 0 0.5rem 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
   .plan-info p { margin: 0; color: var(--muted); font-size: 0.9rem; }
-  .plan-price { font-size: 1.75rem; font-weight: 800; background: var(--gradient2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .plan-price { font-size: 1.75rem; font-weight: 800; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
 
   .btn {
-    padding: 0.75rem 1.5rem;
+    padding: 12px 24px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
@@ -195,31 +230,33 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    transition: all 0.3s;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     font-family: inherit;
   }
 
   .btn-primary {
     background: var(--gradient);
     color: white;
-    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.25);
+    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
   }
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(255, 61, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
   }
 
   .btn-secondary {
-    background: var(--panel2);
+    background: rgba(36, 22, 16, 0.8);
     color: var(--text);
     border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
   }
 
   .btn-secondary:hover {
     border-color: var(--fire2);
     color: var(--fire3);
+    background: rgba(36, 22, 16, 1);
   }
 
   .btn-success { background: var(--success); color: white; }
@@ -232,6 +269,11 @@
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
+  }
+
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
   }
 
   /* Responsive */
@@ -249,9 +291,9 @@
     <div class="logo-icon">C</div>
     <span>ClipForge</span>
   </div>
-  <button class="btn btn-secondary btn-sm" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+  <button class="btn btn-secondary btn-sm" onclick="window.location.href='/project.html'">Back to Project</button>
 </header>
-<div class="container">
+<div class="container fade-in-up">
   <div class="usage-stats" id="usage"></div>
   
   <div class="current-plan">
@@ -269,6 +311,7 @@
 
 <script>
   let user = null;
+const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
   let plans = {
     free: { minutes: 60, watermark: true, price: 0 },
     starter: { minutes: 150, watermark: false, price: 19 },
@@ -279,7 +322,7 @@
     const token = localStorage.getItem('clipforge_token');
     if (!token) { window.location.href = '/'; return; }
     
-    const usageRes = await fetch('/api/usage', {
+    const usageRes = await fetch(API + '/usage', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (usageRes.ok) {
@@ -287,7 +330,7 @@
       renderUsage(usage);
     }
     
-    const meRes = await fetch('/api/auth/me', {
+    const meRes = await fetch(API + '/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (meRes.ok) {

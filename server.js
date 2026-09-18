@@ -94,9 +94,7 @@ function bootstrapAdmin() {
   writeUsers(users);
 }
 
-if (isMain) {
-  bootstrapAdmin();
-}
+bootstrapAdmin();
 
 app.use(cors({ origin: 'https://thenexoralabstoday-stack.github.io', credentials: true }));
 app.use(express.json({ limit: '50mb' }));

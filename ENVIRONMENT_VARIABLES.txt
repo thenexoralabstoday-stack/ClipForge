@@ -1,0 +1,161 @@
+ClipForge Environment Variables
+================================
+
+Copy the values you actually need into your .env file.
+Do NOT put secrets in the frontend or in HTML.
+
+----------------------------
+REQUIRED / HIGHLY RECOMMENDED
+----------------------------
+
+AI_PROVIDER=groq
+  - Which AI provider to use.
+  - Options: groq, anthropic, gemini
+  - Default: groq
+
+GROQ_API_KEY=your_groq_api_key_here
+  - Required for AI clip selection, scoring, captions, metadata, audio suggestions.
+  - Get it from: https://console.groq.com/keys
+
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+  - Optional. Only used if AI_PROVIDER=anthropic.
+  - Get it from: https://console.anthropic.com/
+
+GEMINI_API_KEY=your_gemini_api_key_here
+  - Optional. Only used if AI_PROVIDER=gemini.
+  - Get it from: https://aistudio.google.com/app/apikey
+
+JWT_SECRET=your_jwt_secret_here_change_in_production
+  - REQUIRED for production.
+  - Use a long random string.
+  - This signs user auth tokens.
+
+BASE_URL=https://your-app.onrender.com
+  - REQUIRED for production.
+  - This is your public backend URL.
+  - Used for Stripe callbacks and OAuth redirects.
+
+PORT=10000
+  - REQUIRED on Render.
+  - Render sets this automatically, but keep it in .env for local dev.
+
+NODE_ENV=production
+  - Set to production when deployed.
+  - Set to development locally.
+
+----------------------------
+SOCIAL OAUTH - YOUTUBE
+----------------------------
+
+YOUTUBE_CLIENT_ID=your_youtube_client_id
+YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
+YOUTUBE_REDIRECT_URI=https://your-app.onrender.com/auth/youtube/callback
+  - REQUIRED for YouTube publishing.
+  - Create OAuth 2.0 credentials in Google Cloud Console.
+  - Add the REDIRECT_URI to your Google Cloud OAuth consent screen.
+  - Scope needed: https://www.googleapis.com/auth/youtube.upload
+
+YOUTUBE_TOKEN=optional_existing_token
+  - Optional. Only for initial bootstrap.
+
+----------------------------
+SOCIAL OAUTH - TIKTOK
+----------------------------
+
+TIKTOK_CLIENT_KEY=your_tiktok_client_key
+TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
+TIKTOK_REDIRECT_URI=https://your-app.onrender.com/auth/tiktok/callback
+  - REQUIRED for TikTok publishing.
+  - Create an app at https://developers.tiktok.com/
+  - Add the REDIRECT_URI to your TikTok app settings.
+  - Note: unaudited TikTok apps may be restricted to private posting.
+
+TIKTOK_ACCESS_TOKEN=optional_existing_token
+  - Optional. Only for initial bootstrap.
+
+----------------------------
+SOCIAL OAUTH - INSTAGRAM
+----------------------------
+
+INSTAGRAM_APP_ID=your_instagram_app_id
+INSTAGRAM_APP_SECRET=your_instagram_app_secret
+INSTAGRAM_REDIRECT_URI=https://your-app.onrender.com/auth/instagram/callback
+  - REQUIRED for Instagram Reels publishing.
+  - Create a Meta app at https://developers.facebook.com/
+  - Add Instagram Basic Display and Content Publishing products.
+  - Add the REDIRECT_URI to your Meta app settings.
+
+INSTAGRAM_ACCESS_TOKEN=optional_existing_token
+INSTAGRAM_USER_ID=optional_instagram_user_id
+  - Optional. Only for initial bootstrap.
+
+----------------------------
+BILLING - STRIPE
+----------------------------
+
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+  - REQUIRED if you want subscription billing.
+  - Get it from: https://dashboard.stripe.com/test/apikeys
+  - Use test key for development, live key for production.
+
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+  - REQUIRED if using Stripe webhooks.
+  - Set up webhook endpoint in Stripe dashboard.
+  - Events to listen for: checkout.session.completed, invoice.payment_succeeded
+
+----------------------------
+STORAGE (OPTIONAL)
+----------------------------
+
+STORAGE_PROVIDER=local
+  - Options: local, s3, r2, gcs
+  - Default: local (filesystem)
+  - Set to s3/r2/gcs for production object storage.
+
+STORAGE_BUCKET=your_bucket_name
+STORAGE_REGION=your_bucket_region
+STORAGE_ACCESS_KEY=your_access_key
+STORAGE_SECRET_KEY=your_secret_key
+  - Only required if STORAGE_PROVIDER is not local.
+
+----------------------------
+SECURITY
+----------------------------
+
+ENCRYPTION_KEY=your_encryption_key_here
+  - Optional. Used for encrypting OAuth tokens in database.
+  - Use a long random string.
+
+----------------------------
+REDIS / QUEUE (OPTIONAL)
+----------------------------
+
+REDIS_URL=redis://localhost:6379
+  - Optional. Only needed if using BullMQ/Redis job queue.
+  - For Render, you can use Render Redis or Upstash Redis.
+
+----------------------------
+QUICK START CHECKLIST
+----------------------------
+
+1. Copy .env.example to .env
+2. Set GROQ_API_KEY (required for AI features)
+3. Set JWT_SECRET (required for production)
+4. Set BASE_URL (required for production)
+5. Set PORT=10000 (required for Render)
+6. Add social OAuth keys only when ready to enable publishing
+7. Add Stripe keys only when ready to enable billing
+8. Run: npm install
+9. Run: node server.js
+10. Visit: http://localhost:5173
+
+----------------------------
+NOTES
+----------------------------
+
+- Never commit .env to git.
+- The data/ folder is gitignored. Local users, projects, and clips stay on your machine.
+- Render free tier services spin down after inactivity. First request may be slow.
+- For production, use a real database (PostgreSQL) instead of JSON files.
+- For production, use a real queue (BullMQ + Redis) instead of in-memory job processing.
+- For production, use object storage (S3/R2/GCS) instead of local filesystem.

@@ -12,6 +12,9 @@ import { runPipeline } from './src/pipeline.js';
 import { getYouTubeAuthUrl, exchangeYouTubeCode, getTikTokAuthUrl, exchangeTikTokCode, getInstagramAuthUrl, exchangeInstagramCode } from './src/uploads.js';
 import { getMemeSounds, analyzeMemeSoundMoments, generateMemeSoundPlan } from './src/meme-ai.js';
 import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
+import { ClipAnalysisService } from './src/ai.js';
+import { saveFile, getProjectDir, ensureStorageDirs, fileExists, getStoragePath, downloadFromUrl } from './src/storage.js';
+import { generateId } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
@@ -520,6 +523,480 @@ app.post('/api/meme-sounds/apply-all/:jobId', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Projects
+app.get('/api/projects', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const projects = readProjects().filter(p => p.userId === user.id);
+    res.json({ projects });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.post('/api/projects', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const { name, sourceType, sourceUrl, rightsConfirmed } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'Project name required' });
+    if (!sourceType) return res.status(400).json({ error: 'sourceType required' });
+    if (!rightsConfirmed) return res.status(400).json({ error: 'You must confirm rights to process this content' });
+    
+    const projects = readProjects();
+    const project = {
+      id: generateId(),
+      userId: user.id,
+      name,
+      sourceType,
+      sourceUrl: sourceUrl || null,
+      status: 'created',
+      progress: 0,
+      currentStep: 'created',
+      clipsCount: 0,
+      rendersCount: 0,
+      publishesCount: 0,
+      error: null,
+      rightsConfirmedAt: now(),
+      createdAt: now(),
+      updatedAt: now()
+    };
+    projects.push(project);
+    writeProjects(projects);
+    
+    res.json({ project });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.get('/api/projects/:id', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    res.json({ project });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.post('/api/projects/:id/source', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const projects = readProjects();
+    const pIdx = projects.findIndex(p => p.id === req.params.id && p.userId === user.id);
+    if (pIdx === -1) return res.status(404).json({ error: 'Project not found' });
+    
+    const { sourceType, sourceUrl, fileName, fileBuffer, rightsConfirmed } = req.body || {};
+    if (!rightsConfirmed) return res.status(400).json({ error: 'Rights confirmation required' });
+    
+    ensureStorageDirs();
+    const projectDir = getProjectDir(projects[pIdx].id);
+    if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+    
+    let sourceFile = null;
+    let meta = { title: projects[pIdx].name, duration: 0, resolution: 'unknown', fps: 0, codec: 'unknown', size: 0 };
+    
+    if (sourceType === 'upload' && fileBuffer) {
+      const ext = fileName?.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : '.mp4';
+      const safeName = `source${ext}`;
+      sourceFile = path.join(projectDir, safeName);
+      fs.writeFileSync(sourceFile, Buffer.from(fileBuffer));
+      meta.size = fileBuffer.length;
+    } else if (sourceType === 'url' && sourceUrl) {
+      const safeName = 'source.mp4';
+      sourceFile = path.join(projectDir, safeName);
+      await downloadFromUrl(sourceUrl, sourceFile);
+      meta.url = sourceUrl;
+      meta.size = fs.statSync(sourceFile).size;
+    } else {
+      return res.status(400).json({ error: 'sourceType must be upload or url' });
+    }
+    
+    projects[pIdx].sourceType = sourceType;
+    projects[pIdx].sourceUrl = sourceUrl || null;
+    projects[pIdx].sourceFile = sourceFile;
+    projects[pIdx].status = 'uploaded';
+    projects[pIdx].currentStep = 'uploaded';
+    projects[pIdx].updatedAt = now();
+    writeProjects(projects);
+    
+    res.json({ project: projects[pIdx], meta });
+  } catch (e) {
+    console.error('source upload failed:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/projects/:id/analyze', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const projects = readProjects();
+    const project = projects.find(p => p.id === req.params.id && p.userId === user.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!project.sourceFile) return res.status(400).json({ error: 'No source video uploaded' });
+    
+    const analysisService = new ClipAnalysisService();
+    const result = await analysisService.analyzeVideo({ segments: [] }, { duration: 0, title: project.name });
+    
+    project.status = 'analyzed';
+    project.currentStep = 'analyzed';
+    project.analysis = result;
+    project.updatedAt = now();
+    writeProjects(projects);
+    
+    res.json({ analysis: result, project });
+  } catch (e) {
+    console.error('analysis failed:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Clips
+app.get('/api/projects/:id/clips', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    const clips = readClips().filter(c => c.projectId === project.id);
+    res.json({ clips });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.post('/api/projects/:id/clips', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    const { clips } = req.body || {};
+    if (!Array.isArray(clips)) return res.status(400).json({ error: 'clips must be an array' });
+    
+    const allClips = readClips();
+    const saved = clips.map(c => ({
+      id: generateId(),
+      projectId: project.id,
+      userId: user.id,
+      ...c,
+      status: 'created',
+      renderStatus: 'pending',
+      createdAt: now(),
+      updatedAt: now()
+    }));
+    allClips.push(...saved);
+    writeClips(allClips);
+    
+    const projects = readProjects();
+    const pIdx = projects.findIndex(p => p.id === project.id);
+    if (pIdx !== -1) {
+      projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
+      projects[pIdx].status = 'clips_ready';
+      projects[pIdx].currentStep = 'clips_ready';
+      writeProjects(projects);
+    }
+    
+    res.json({ clips: saved });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.patch('/api/clips/:id', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const idx = clips.findIndex(c => c.id === req.params.id && c.userId === user.id);
+    if (idx === -1) return res.status(404).json({ error: 'Clip not found' });
+    
+    clips[idx] = { ...clips[idx], ...req.body, updatedAt: now() };
+    writeClips(clips);
+    
+    res.json({ clip: clips[idx] });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.delete('/api/clips/:id', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const idx = clips.findIndex(c => c.id === req.params.id && c.userId === user.id);
+    if (idx === -1) return res.status(404).json({ error: 'Clip not found' });
+    
+    clips.splice(idx, 1);
+    writeClips(clips);
+    
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.post('/api/clips/:id/generate-metadata', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const clip = clips.find(c => c.id === req.params.id && c.userId === user.id);
+    if (!clip) return res.status(404).json({ error: 'Clip not found' });
+    
+    const { CaptionService } = await import('./src/ai.js');
+    const service = new CaptionService();
+    const metadata = await service.generateMetadata(clip, {});
+    
+    const idx = clips.findIndex(c => c.id === clip.id);
+    clips[idx] = { ...clips[idx], ...metadata, updatedAt: now() };
+    writeClips(clips);
+    
+    res.json({ metadata, clip: clips[idx] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clips/:id/generate-captions', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const clip = clips.find(c => c.id === req.params.id && c.userId === user.id);
+    if (!clip) return res.status(404).json({ error: 'Clip not found' });
+    
+    const { CaptionService } = await import('./src/ai.js');
+    const service = new CaptionService();
+    const captions = await service.generateCaptions(clip, { segments: [] });
+    
+    const idx = clips.findIndex(c => c.id === clip.id);
+    clips[idx] = { ...clips[idx], captions, updatedAt: now() };
+    writeClips(clips);
+    
+    res.json({ captions, clip: clips[idx] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clips/:id/suggest-audio', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const clip = clips.find(c => c.id === req.params.id && c.userId === user.id);
+    if (!clip) return res.status(404).json({ error: 'Clip not found' });
+    
+    const { AudioSuggestionService } = await import('./src/ai.js');
+    const service = new AudioSuggestionService();
+    const suggestions = await service.suggestAudio(clip, {});
+    
+    res.json({ suggestions });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clips/:id/render', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const clip = clips.find(c => c.id === req.params.id && c.userId === user.id);
+    if (!clip) return res.status(404).json({ error: 'Clip not found' });
+    
+    const projects = readProjects();
+    const project = projects.find(p => p.id === clip.projectId);
+    if (!project?.sourceFile) return res.status(400).json({ error: 'Source video missing' });
+    
+    const projectDir = getProjectDir(project.id);
+    const clipDir = path.join(projectDir, 'clips');
+    if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
+    
+    const idx = clips.findIndex(c => c.id === clip.id);
+    clips[idx] = { ...clips[idx], renderStatus: 'rendering', updatedAt: now() };
+    writeClips(clips);
+    
+    try {
+      const { renderClip } = await import('./src/render.js');
+      const outFile = path.join(clipDir, `${clip.id}.mp4`);
+      await renderClip({
+        source: project.sourceFile,
+        clip: { start: clip.start, end: clip.end, words: clip.captions?.words || [] },
+        clipDir,
+        index: 0,
+        total: 1,
+        style: clip.captionStyle || 'classic',
+        reframe: clip.reframe || 'center'
+      });
+      
+      const outIdx = clips.findIndex(c => c.id === clip.id);
+      clips[outIdx] = { ...clips[outIdx], renderStatus: 'done', renderPath: `/storage/${project.id}/${clip.id}.mp4`, updatedAt: now() };
+      writeClips(clips);
+      
+      res.json({ ok: true, clip: clips[outIdx] });
+    } catch (e) {
+      const outIdx = clips.findIndex(c => c.id === clip.id);
+      clips[outIdx] = { ...clips[outIdx], renderStatus: 'failed', error: e.message, updatedAt: now() };
+      writeClips(clips);
+      res.status(500).json({ error: e.message });
+    }
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Social accounts
+app.get('/api/social/accounts', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ accounts: user.social || {} });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.post('/api/clips/:id/publish', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const clips = readClips();
+    const clip = clips.find(c => c.id === req.params.id && c.userId === user.id);
+    if (!clip) return res.status(404).json({ error: 'Clip not found' });
+    
+    const { platforms, title, description, hashtags } = req.body || {};
+    if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
+      return res.status(400).json({ error: 'platforms array required' });
+    }
+    
+    const social = user.social || {};
+    const results = [];
+    
+    for (const platform of platforms) {
+      try {
+        if (!social[platform]) {
+          results.push({ platform, status: 'skipped', error: 'Not connected' });
+          continue;
+        }
+        
+        const clipPath = clip.renderPath || `/output/${clip.projectId}/clips/${clip.id}.mp4`;
+        const fullPath = path.resolve(`.${clipPath}`);
+        if (!fs.existsSync(fullPath)) {
+          results.push({ platform, status: 'skipped', error: 'Rendered video not found' });
+          continue;
+        }
+        
+        const { uploadClip } = await import('../uploads.js');
+        const id = await uploadClip(fullPath, platform, { title, caption: description, hashtags }, { ...social[platform] });
+        results.push({ platform, status: 'published', id });
+      } catch (e) {
+        results.push({ platform, status: 'failed', error: e.message });
+      }
+    }
+    
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+
+const PROJECTS_FILE = path.resolve('./data/projects.json');
+const CLIPS_FILE = path.resolve('./data/clips.json');
+
+function readProjects() {
+  ensureDataDir();
+  if (!fs.existsSync(PROJECTS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8'));
+}
+
+function writeProjects(data) {
+  ensureDataDir();
+  fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
+}
+
+function readClips() {
+  ensureDataDir();
+  if (!fs.existsSync(CLIPS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(CLIPS_FILE, 'utf8'));
+}
+
+function writeClips(data) {
+  ensureDataDir();
+  fs.writeFileSync(CLIPS_FILE, JSON.stringify(data, null, 2));
+}
 
 async function runJob(id, body) {
   const job = JOBS.get(id);

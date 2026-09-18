@@ -168,7 +168,7 @@ async function main() {
 }
 
 async function startUiCmd() {
-  const { startUi: launch } = await import('./ui/server.js');
+  const { startUi: launch } = await import('../server.js');
   launch();
 }
 

@@ -7,10 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import jwt from 'jsonwebtoken';
 import Stripe from 'stripe';
-import { runPipeline } from '../pipeline.js';
-import { getYouTubeAuthUrl, exchangeYouTubeCode, getTikTokAuthUrl, exchangeTikTokCode, getInstagramAuthUrl, exchangeInstagramCode } from '../uploads.js';
-import { getMemeSounds, analyzeMemeSoundMoments, generateMemeSoundPlan } from '../meme-ai.js';
-import { addMultipleMemeSounds, addMemeSoundToClip } from '../audio.js';
+import { runPipeline } from './src/pipeline.js';
+import { getYouTubeAuthUrl, exchangeYouTubeCode, getTikTokAuthUrl, exchangeTikTokCode, getInstagramAuthUrl, exchangeInstagramCode } from './src/uploads.js';
+import { getMemeSounds, analyzeMemeSoundMoments, generateMemeSoundPlan } from './src/meme-ai.js';
+import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);

@@ -1,0 +1,530 @@
+<!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
+<!-- Contact: thenexoralabstoday@gmail.com -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipForge — Project</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg: #080605;
+    --bg2: #0f0a08;
+    --bg3: #130a06;
+    --panel: #1a0f0a;
+    --panel2: #241610;
+    --text: #f5ebe0;
+    --text2: #d4c4b5;
+    --muted: #8a7a6e;
+    --fire: #ff3d00;
+    --fire2: #ff6a00;
+    --fire3: #ff9d00;
+    --fire4: #ffd166;
+    --border: rgba(255, 255, 255, 0.055);
+    --border2: rgba(255, 255, 255, 0.09);
+    --gradient: linear-gradient(135deg, #ff3d00 0%, #ff6a00 100%);
+    --gradient2: linear-gradient(135deg, #ff6a00 0%, #ff9d00 100%);
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --radius: 12px;
+    --shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .app-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8, 6, 5, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--gradient);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    font-weight: 800;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+  }
+
+  .btn-primary {
+    background: var(--gradient);
+    color: white;
+    box-shadow: 0 4px 16px rgba(255, 61, 0, 0.25);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.4);
+  }
+
+  .btn-secondary {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--fire2);
+    color: var(--fire3);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .clip-card {
+    background: rgba(26, 15, 10, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s;
+  }
+
+  .clip-card:hover {
+    border-color: var(--fire2);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.1);
+  }
+
+  .clip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .clip-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .clip-meta {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .clip-score {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .clip-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--gradient);
+    transition: width 0.5s ease;
+    border-radius: 4px;
+    box-shadow: 0 0 12px rgba(255, 61, 0, 0.4);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--panel2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .status-badge.ready { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+  .status-badge.processing { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+  .status-badge.error { background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3); }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+
+  .empty-state h3 {
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  @media (max-width: 768px) {
+    header { padding: 1rem; }
+    .container { padding: 1rem; }
+    .page-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app-grain" aria-hidden="true"></div>
+
+<header>
+  <a href="/" class="logo">
+    <div class="logo-icon">C</div>
+    <span>ClipForge</span>
+  </a>
+  <div style="display: flex; gap: 1rem; align-items: center;">
+    <button class="btn btn-secondary" onclick="window.location.href='/projects.html'">Projects</button>
+    <button class="btn btn-secondary" onclick="logout()">Sign Out</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title" id="projectName">Loading...</h1>
+      <p style="color: var(--muted); margin-top: 0.5rem;" id="projectStatus">Loading...</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeProject()">Analyze Video</button>
+      <button class="btn btn-secondary" id="uploadBtn" onclick="showUploadModal()">Upload Source</button>
+    </div>
+  </div>
+
+  <div id="progressSection" style="display: none;">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+    <p style="color: var(--muted); font-size: 0.9rem;" id="progressText">Processing...</p>
+  </div>
+
+  <h2 style="font-size: 1.5rem; font-weight: 700; margin: 2rem 0 1rem;">Clips</h2>
+  <div id="clipsList"></div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal" id="uploadModal">
+  <div class="modal-content">
+    <h2>Upload Source Video</h2>
+    <div class="form-group">
+      <label>Source Type</label>
+      <select id="sourceType" onchange="toggleSourceFields()">
+        <option value="upload">Upload Video</option>
+        <option value="url">YouTube URL</option>
+      </select>
+    </div>
+    <div class="form-group" id="urlField" style="display: none;">
+      <label>Video URL</label>
+      <input type="text" id="sourceUrl" placeholder="https://youtube.com/watch?v=...">
+    </div>
+    <div class="form-group" id="uploadField">
+      <label>Video File</label>
+      <input type="file" id="sourceFile" accept="video/*">
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="rightsConfirmed">
+        I confirm I have the right to process and publish this content
+      </label>
+    </div>
+    <button class="btn btn-primary" style="width: 100%;" onclick="uploadSource()">Upload</button>
+    <button class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;" onclick="closeUploadModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
+  let token = localStorage.getItem('clipforge_token');
+  let user = JSON.parse(localStorage.getItem('clipforge_user') || 'null');
+  let projectId = new URLSearchParams(window.location.search).get('id');
+
+  function $(id) { return document.getElementById(id); }
+
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:rgba(26,15,10,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:1rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:4000;color:#f5ebe0;font-size:0.9rem;border-left:4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#ff6a00'};`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  async function api(path, opts = {}) {
+    const res = await fetch(API + path, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Request failed');
+    return data;
+  }
+
+  function showUploadModal() {
+    $('uploadModal').classList.add('active');
+  }
+
+  function closeUploadModal() {
+    $('uploadModal').classList.remove('active');
+  }
+
+  function toggleSourceFields() {
+    const type = $('sourceType').value;
+    $('urlField').style.display = type === 'url' ? 'block' : 'none';
+    $('uploadField').style.display = type === 'upload' ? 'block' : 'none';
+  }
+
+  async function uploadSource() {
+    const sourceType = $('sourceType').value;
+    const sourceUrl = $('sourceUrl').value.trim();
+    const rightsConfirmed = document.querySelector('#rightsConfirmed').checked;
+
+    if (!rightsConfirmed) return showToast('Please confirm rights to process this content', 'error');
+
+    try {
+      const body = { sourceType, rightsConfirmed };
+      if (sourceType === 'url') body.sourceUrl = sourceUrl;
+      if (sourceType === 'upload') {
+        const file = $('sourceFile').files[0];
+        if (!file) return showToast('Please select a video file', 'error');
+        const buffer = await file.arrayBuffer();
+        body.fileName = file.name;
+        body.fileBuffer = Array.from(new Uint8Array(buffer));
+      }
+
+      await api(`/projects/${projectId}/source`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      showToast('Source uploaded!', 'success');
+      closeUploadModal();
+      loadProject();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  async function analyzeProject() {
+    try {
+      $('progressSection').style.display = 'block';
+      $('progressFill').style.width = '0%';
+      $('progressText').textContent = 'Analyzing video...';
+      $('analyzeBtn').disabled = true;
+
+      const data = await api(`/projects/${projectId}/analyze`, { method: 'POST' });
+      
+      $('progressFill').style.width = '100%';
+      $('progressText').textContent = 'Analysis complete!';
+      showToast('Analysis complete!', 'success');
+      
+      setTimeout(() => {
+        $('progressSection').style.display = 'none';
+        $('analyzeBtn').disabled = false;
+      }, 2000);
+
+      loadProject();
+    } catch (e) {
+      showToast(e.message, 'error');
+      $('analyzeBtn').disabled = false;
+    }
+  }
+
+  async function loadProject() {
+    try {
+      const data = await api(`/projects/${projectId}`);
+      const p = data.project;
+      
+      $('projectName').textContent = p.name;
+      $('projectStatus').textContent = `${p.status} · ${p.sourceType || 'no source'}`;
+      
+      if (p.status === 'uploaded' || p.status === 'created') {
+        $('analyzeBtn').style.display = 'inline-flex';
+        $('uploadBtn').style.display = 'inline-flex';
+      } else {
+        $('analyzeBtn').style.display = 'none';
+        $('uploadBtn').style.display = 'none';
+      }
+
+      const clipsData = await api(`/projects/${projectId}/clips`);
+      const container = $('clipsList');
+      
+      if (clipsData.clips.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3>No clips yet</h3>
+            <p>Upload a source video and analyze it to generate clips</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = clipsData.clips.map((c, i) => `
+        <div class="clip-card">
+          <div class="clip-header">
+            <div>
+              <div class="clip-title">Clip ${i + 1}: ${escapeHtml(c.title || 'Untitled')}</div>
+              <div class="clip-meta">${c.start?.toFixed(1)}s - ${c.end?.toFixed(1)}s · Score: ${c.score || '—'}</div>
+            </div>
+            <div class="clip-score">${c.score || '—'}</div>
+          </div>
+          <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">${escapeHtml(c.hook || c.reason || '')}</p>
+          <div class="clip-actions">
+            <button class="btn btn-primary" onclick="editClip('${c.id}')">Edit</button>
+            <button class="btn btn-secondary" onclick="renderClip('${c.id}')">Render</button>
+            <button class="btn btn-secondary" onclick="deleteClip('${c.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  async function editClip(clipId) {
+    showToast('Opening editor...', 'info');
+    setTimeout(() => {
+      window.location.href = `/editor.html?clip=${clipId}`;
+    }, 500);
+  }
+
+  async function renderClip(clipId) {
+    try {
+      showToast('Rendering clip...', 'info');
+      await api(`/clips/${clipId}/render`, { method: 'POST' });
+      showToast('Render complete!', 'success');
+      loadProject();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  async function deleteClip(clipId) {
+    if (!confirm('Delete this clip?')) return;
+    try {
+      await api(`/clips/${clipId}`, { method: 'DELETE' });
+      showToast('Clip deleted', 'success');
+      loadProject();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function logout() {
+    token = null;
+    user = null;
+    localStorage.removeItem('clipforge_token');
+    localStorage.removeItem('clipforge_user');
+    window.location.href = '/';
+  }
+
+  // Init
+  if (!token || !projectId) {
+    window.location.href = '/projects.html';
+  }
+  loadProject();
+</script>
+</body>
+</html>

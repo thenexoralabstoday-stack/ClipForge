@@ -78,6 +78,7 @@ app.use(cors({ origin: 'https://thenexoralabstoday-stack.github.io', credentials
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: 'application/json' }));
 app.use('/output', express.static(path.resolve('./output')));
+app.use('/storage', express.static(path.resolve('./storage')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -382,6 +383,14 @@ app.get('/editor/:jobId', (req, res) => {
 
 app.get('/meme-sounds', (req, res) => {
   res.sendFile(path.join(__dirname, 'meme-sounds.html'));
+});
+
+app.get('/projects', (req, res) => {
+  res.sendFile(path.join(__dirname, 'projects.html'));
+});
+
+app.get('/project.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'project.html'));
 });
 
 app.get('/api/clips/:jobId', (req, res) => {

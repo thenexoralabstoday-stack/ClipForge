@@ -924,6 +924,95 @@
 
   .footer-email:hover { color: var(--fire2); }
 
+  /* ─── Projects ────────────────────────────────── */
+  .projects-page {
+    min-height: 100vh;
+    padding-top: 64px;
+  }
+
+  .projects-header {
+    background: rgba(8, 6, 5, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .projects-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .project-card {
+    background: rgba(26, 15, 10, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .project-card:hover {
+    border-color: var(--fire2);
+    transform: translateX(4px);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.1);
+  }
+
+  .project-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .project-card p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .project-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--panel2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .project-status.ready { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+  .project-status.processing { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+  .project-status.error { background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3); }
+
+  .create-project-btn {
+    background: var(--gradient);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+    transition: all 0.3s;
+  }
+
+  .create-project-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.3);
+  }
+
   /* ─── Auth Pages ─────────────────────────────── */
   .auth-container {
     min-height: 100vh;
@@ -1873,6 +1962,7 @@
           <div style="font-weight: 600; font-size: 0.9rem;" id="userName">User</div>
           <div style="font-size: 0.8rem; color: var(--muted);" id="userPlan">Free Plan</div>
         </div>
+        <button class="btn btn-secondary" onclick="window.location.href='/projects.html'" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Projects</button>
         <button class="btn btn-secondary" onclick="window.location.href='/billing'" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Billing</button>
         <button class="btn btn-secondary" onclick="logout()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Sign Out</button>
       </div>

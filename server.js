@@ -74,6 +74,30 @@ function hashPassword(pw) {
   return String(hash);
 }
 
+function bootstrapAdmin() {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  const name = process.env.ADMIN_NAME || 'Admin';
+  if (!email || !password) return;
+  const users = readUsers();
+  const existing = users[email];
+  users[email] = {
+    id: email,
+    name: existing?.name || name,
+    email,
+    password: existing?.password || hashPassword(password),
+    plan: 'admin',
+    minutesUsed: existing?.minutesUsed || 0,
+    clipsCreated: existing?.clipsCreated || 0,
+    createdAt: existing?.createdAt || Date.now(),
+  };
+  writeUsers(users);
+}
+
+if (isMain) {
+  bootstrapAdmin();
+}
+
 app.use(cors({ origin: 'https://thenexoralabstoday-stack.github.io', credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: 'application/json' }));

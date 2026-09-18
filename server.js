@@ -16,7 +16,7 @@ import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 const app = express();
-const PORT = 5173;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5173;
 const JWT_SECRET = process.env.JWT_SECRET || 'clipforge-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;

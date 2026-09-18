@@ -1,0 +1,424 @@
+<!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
+<!-- Contact: thenexoralabstoday@gmail.com -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="clipforge-api-base" content="https://clipforge-ouco.onrender.com/api">
+<title>ClipForge — Connections</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #06040a;
+    --bg2: #0d0806;
+    --panel: #1a0f0a;
+    --panel2: #241610;
+    --text: #f5ebe0;
+    --text2: #d4c4b5;
+    --muted: #8a7a6e;
+    --fire: #ff3d00;
+    --fire2: #ff6a00;
+    --fire3: #ff9d00;
+    --fire4: #ffd166;
+    --border: rgba(255, 255, 255, 0.055);
+    --border2: rgba(255, 255, 255, 0.09);
+    --gradient: linear-gradient(135deg, #ff3d00 0%, #ff6a00 100%);
+    --gradient2: linear-gradient(135deg, #ff6a00 0%, #ff9d00 100%);
+    --success: #10b981;
+    --error: #ef4444;
+    --radius: 12px;
+    --shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .app-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(6, 4, 10, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--gradient);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    font-weight: 800;
+  }
+
+  .container {
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .connection-card {
+    background: rgba(26, 15, 10, 0.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .connection-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: all 0.35s;
+  }
+
+  .connection-card:hover {
+    border-color: rgba(255, 106, 0, 0.35);
+    transform: translateX(6px);
+    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
+  }
+
+  .connection-card:hover::before {
+    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
+  }
+
+  .connection-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .connection-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .connection-icon.youtube { background: linear-gradient(135deg, #ff0000, #cc0000); }
+  .connection-icon.tiktok { background: linear-gradient(135deg, #00f2ea, #000000); }
+  .connection-icon.instagram { background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); }
+
+  .connection-details h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
+  }
+
+  .connection-details p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.5rem;
+  }
+
+  .connection-status.connected {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .connection-status.disconnected {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: var(--gradient);
+    color: white;
+    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
+  }
+
+  .btn-secondary {
+    background: rgba(36, 22, 16, 0.8);
+    color: var(--text);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--fire2);
+    color: var(--fire3);
+    background: rgba(36, 22, 16, 1);
+  }
+
+  .btn-danger {
+    background: var(--error);
+    color: white;
+  }
+
+  .btn-danger:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+  }
+
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--muted);
+  }
+
+  .empty-state-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+
+  .empty-state h3 {
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  @media (max-width: 768px) {
+    header { padding: 1rem; }
+    .container { padding: 1rem; }
+    .connection-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app-grain" aria-hidden="true"></div>
+
+<header>
+  <a href="/" class="logo">
+    <div class="logo-icon">C</div>
+    <span>ClipForge</span>
+  </a>
+  <div style="display: flex; gap: 1rem; align-items: center;">
+    <button class="btn btn-secondary" onclick="window.location.href='/projects.html'">Projects</button>
+    <button class="btn btn-secondary" onclick="logout()">Sign Out</button>
+  </div>
+</header>
+
+<div class="container fade-in-up">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Connections</h1>
+      <p class="page-subtitle">Manage your YouTube, TikTok, and Instagram accounts</p>
+    </div>
+  </div>
+
+  <div id="connectionsList"></div>
+</div>
+
+<script>
+  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
+  let token = localStorage.getItem('clipforge_token');
+  let user = JSON.parse(localStorage.getItem('clipforge_user') || 'null');
+
+  function $(id) { return document.getElementById(id); }
+
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:rgba(26,15,10,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:1rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:4000;color:#f5ebe0;font-size:0.9rem;border-left:4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#ff6a00'};`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  async function api(path, opts = {}) {
+    const res = await fetch(API + path, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Request failed');
+    return data;
+  }
+
+  async function loadConnections() {
+    try {
+      const data = await api('/auth/social');
+      const accounts = data.social || {};
+      const container = $('connectionsList');
+      const platforms = [
+        { key: 'youtube', name: 'YouTube', icon: '▶', desc: 'Upload clips directly to YouTube' },
+        { key: 'tiktok', name: 'TikTok', icon: '♪', desc: 'Post short videos to TikTok' },
+        { key: 'instagram', name: 'Instagram', icon: '◉', desc: 'Share reels to Instagram' },
+      ];
+
+      container.innerHTML = platforms.map(p => {
+        const connected = !!accounts[p.key];
+        return `
+          <div class="connection-card fade-in-up">
+            <div class="connection-info">
+              <div class="connection-icon ${p.key}">${p.icon}</div>
+              <div class="connection-details">
+                <h3>${p.name}</h3>
+                <p>${p.desc}</p>
+                <div class="connection-status ${connected ? 'connected' : 'disconnected'}">
+                  ${connected ? '● Connected' : '○ Not connected'}
+                </div>
+              </div>
+            </div>
+            <div>
+              ${connected
+                ? `<button class="btn btn-danger btn-sm" onclick="disconnect('${p.key}')">Disconnect</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="connect('${p.key}')">Connect</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  async function connect(platform) {
+    try {
+      const data = await api(`/auth/${platform}/url`);
+      if (data.url) window.open(data.url, '_blank');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  async function disconnect(platform) {
+    try {
+      await api(`/auth/${platform}/disconnect`, { method: 'POST' });
+      showToast('Disconnected', 'success');
+      loadConnections();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function logout() {
+    token = null;
+    user = null;
+    localStorage.removeItem('clipforge_token');
+    localStorage.removeItem('clipforge_user');
+    window.location.href = '/';
+  }
+
+  loadConnections();
+</script>
+</body>
+</html>

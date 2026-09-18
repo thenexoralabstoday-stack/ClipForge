@@ -955,6 +955,23 @@ app.get('/api/social/accounts', (req, res) => {
   }
 });
 
+app.post('/api/auth/:platform/disconnect', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const platform = req.params.platform;
+    const social = { ...(user.social || {}) };
+    delete social[platform];
+    updateUser(user.id, { social });
+    res.json({ ok: true, accounts: social });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
 app.post('/api/clips/:id/publish', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'No token' });

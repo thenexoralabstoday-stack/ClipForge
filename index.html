@@ -2037,9 +2037,9 @@
         ...(opts.headers || {}),
       },
     });
-    if (res.status === 401) { logout(); return; }
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) throw new Error(data?.error || 'Request failed');
     return data;
   }
 

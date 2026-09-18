@@ -5,6 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="clipforge-api-base" content="/api">
 <title>ClipForge — Clip Editor</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -251,8 +252,8 @@
     <span>ClipForge</span>
   </div>
   <div class="header-actions">
-    <a href="/meme-sounds?job=${jobId}" class="btn btn-secondary btn-sm" style="color: var(--fire3); text-decoration: none;">Meme Sounds</a>
-    <a href="/publish/${jobId}" class="btn btn-secondary btn-sm" style="color: var(--fire3); text-decoration: none;">Publish</a>
+    <a href="/meme-sounds" class="btn btn-secondary btn-sm" style="color: var(--fire3); text-decoration: none;">Meme Sounds</a>
+    <a href="/publish" class="btn btn-secondary btn-sm" style="color: var(--fire3); text-decoration: none;">Publish</a>
     <button class="btn btn-primary btn-sm" onclick="saveClips()">Save Changes</button>
   </div>
 </header>
@@ -261,11 +262,22 @@
   <div class="clips-grid" id="clips"></div>
 </div>
 <script>
-  const jobId = new URLSearchParams(window.location.search).get('job') || 'video';
+  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
+  let token = localStorage.getItem('clipforge_token');
+  let user = JSON.parse(localStorage.getItem('clipforge_user') || 'null');
+  const urlParams = new URLSearchParams(window.location.search);
+  let clipId = urlParams.get('clip');
   let clips = [];
+  let currentProjectId = urlParams.get('project');
 
   async function loadClips() {
-    const res = await fetch(`/api/clips/${jobId}`);
+    if (!currentProjectId) {
+      document.getElementById('status').textContent = 'No project selected';
+      return;
+    }
+    const res = await fetch(`${API}/projects/${currentProjectId}/clips`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (!res.ok) { document.getElementById('status').textContent = 'Failed to load clips'; return; }
     const data = await res.json();
     clips = data.clips || [];
@@ -304,6 +316,14 @@
     return div.innerHTML;
   }
 
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:rgba(26,15,10,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:1rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:4000;color:#f5ebe0;font-size:0.9rem;border-left:4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#ff6a00'};`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
   async function saveClips() {
     document.querySelectorAll('.clip-input').forEach(el => {
       const i = parseInt(el.dataset.i);
@@ -314,18 +334,32 @@
         clips[i][field] = el.value;
       }
     });
-    const res = await fetch(`/api/clips/${jobId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clips }),
-    });
-    if (res.ok) { document.getElementById('status').textContent = 'Saved! Re-render to apply changes.'; }
-    else { document.getElementById('status').textContent = 'Save failed'; }
+    
+    for (const clip of clips) {
+      await fetch(`${API}/clips/${clip.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(clip),
+      });
+    }
+    
+    document.getElementById('status').textContent = 'Saved! Re-render to apply changes.';
   }
 
-  function deleteClip(i) {
-    clips.splice(i, 1);
-    renderClips();
+  async function deleteClip(clipId) {
+    if (!confirm('Delete this clip?')) return;
+    const res = await fetch(`${API}/clips/${clipId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      clips = clips.filter(c => c.id !== clipId);
+      renderClips();
+      showToast('Clip deleted');
+    }
   }
 
   loadClips();

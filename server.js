@@ -79,7 +79,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: 'application/json' }));
 app.use('/output', express.static(path.resolve('./output')));
 app.use('/storage', express.static(path.resolve('./storage')));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -1,9 +1,8 @@
-# ClipForge Desktop — local video -> captioned Shorts/Reels/TikToks
+# ClipForge Desktop — full source
 # Copyright (c) 2026 Nexora Labs. All rights reserved.
 # Contact: thenexoralabstoday@gmail.com
 
 import customtkinter as ctk
-import tkinter as tk
 from tkinter import filedialog, messagebox
 import threading
 import os
@@ -12,18 +11,34 @@ import json
 import time
 import subprocess
 import shutil
+import tkinter as tk
 from pathlib import Path
+from PIL import Image, ImageOps
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 
 class ClipForgeDesktop(ctk.CTk):
+    TITLE = "ClipForge Desktop"
+    FG = "#f5ebe0"
+    MUTED = "#8a7a6e"
+    FIRE = "#ff3d00"
+    FIRE2 = "#ff6a00"
+    FIRE3 = "#ff9d00"
+    FIRE4 = "#ffd166"
+    BG = "#080605"
+    BG2 = "#0f0a08"
+    PANEL = "#1a0f0a"
+    PANEL2 = "#241610"
+    BORDER = "rgba(255,255,255,0.055)"
+    BORDER2 = "rgba(255,255,255,0.09)"
+
     def __init__(self):
         super().__init__()
-        self.title("ClipForge Desktop")
-        self.geometry("900x700")
-        self.minsize(700, 500)
+        self.title(self.TITLE)
+        self.geometry("980x760")
+        self.minsize(720, 560)
 
         self.source_type = ctk.StringVar(value="url")
         self.url_value = ctk.StringVar()
@@ -36,6 +51,8 @@ class ClipForgeDesktop(ctk.CTk):
         self.status = ctk.StringVar(value="Ready")
         self.progress = ctk.DoubleVar(value=0)
         self.running = False
+        self.last_workdir = None
+        self.last_clips = []
 
         self._build_ui()
 
@@ -49,38 +66,43 @@ class ClipForgeDesktop(ctk.CTk):
 
         row = 0
 
-        # Title
-        title = ctk.CTkLabel(scroll, text="ClipForge Desktop", font=ctk.CTkFont(size=24, weight="bold"))
-        title.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(24, 4))
+        # Header
+        header = ctk.CTkFrame(scroll, corner_radius=0, fg_color="transparent")
+        header.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(24, 8))
+        header.grid_columnconfigure(0, weight=1)
+
+        title = ctk.CTkLabel(header, text=self.TITLE, font=ctk.CTkFont(size=26, weight="bold"), text_color=self.FG)
+        title.grid(row=0, column=0, sticky="w")
+
+        subtitle = ctk.CTkLabel(header, text="Convert long-form videos into short, captioned clips.", font=ctk.CTkFont(size=12), text_color=self.MUTED)
+        subtitle.grid(row=1, column=0, sticky="w", pady=(4, 0))
         row += 1
 
-        subtitle = ctk.CTkLabel(scroll, text="Convert long-form videos into short, captioned clips.", font=ctk.CTkFont(size=13), text_color="gray")
-        subtitle.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(0, 20))
+        # Source
+        src_lbl = ctk.CTkLabel(scroll, text="Source", font=ctk.CTkFont(size=16, weight="bold"), text_color=self.FG)
+        src_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(16, 8))
         row += 1
 
-        # Source section
-        src_lbl = ctk.CTkLabel(scroll, text="Source", font=ctk.CTkFont(size=16, weight="bold"))
-        src_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(8, 8))
-        row += 1
-
-        seg = ctk.CTkSegmentedButton(scroll, values=["Video URL", "Upload file"], variable=self.source_type, command=self._on_source_change)
+        seg = ctk.CTkSegmentedButton(scroll, values=["Video URL", "Upload file"], variable=self.source_type, command=self._on_source_change, corner_radius=8)
         seg.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 12))
         row += 1
 
-        self.url_entry = ctk.CTkEntry(scroll, textvariable=self.url_value, placeholder_text="Paste YouTube, TikTok, Instagram, VK, Google Drive, or direct video URL")
+        self.url_entry = ctk.CTkEntry(scroll, textvariable=self.url_value, placeholder_text="Paste YouTube, TikTok, Instagram, VK, Google Drive, or direct video URL", corner_radius=8)
         self.url_entry.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 8))
         row += 1
 
-        self.file_entry = ctk.CTkEntry(scroll, textvariable=self.file_path, placeholder_text="Select a video file from your PC")
-        self.file_entry.grid(row=row, column=0, sticky="ew", padx=(24, 8), pady=(0, 8))
+        self.file_row = ctk.CTkFrame(scroll, fg_color="transparent")
+        self.file_row.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 8))
+        self.file_row.grid_columnconfigure(0, weight=1)
+
+        self.file_entry = ctk.CTkEntry(self.file_row, textvariable=self.file_path, placeholder_text="Select a video file from your PC", corner_radius=8)
+        self.file_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        file_btn = ctk.CTkButton(self.file_row, text="Browse", command=self._browse_file, width=90, corner_radius=8)
+        file_btn.grid(row=0, column=1)
         row += 1
 
-        file_btn = ctk.CTkButton(scroll, text="Browse", command=self._browse_file, width=100)
-        file_btn.grid(row=row - 1, column=1, sticky="e", padx=(8, 24), pady=(0, 8))
-        self._set_url_visible(True)
-
-        # Settings section
-        set_lbl = ctk.CTkLabel(scroll, text="Settings", font=ctk.CTkFont(size=16, weight="bold"))
+        # Settings
+        set_lbl = ctk.CTkLabel(scroll, text="Settings", font=ctk.CTkFont(size=16, weight="bold"), text_color=self.FG)
         set_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(16, 8))
         row += 1
 
@@ -90,65 +112,67 @@ class ClipForgeDesktop(ctk.CTk):
         grid.grid_columnconfigure(3, weight=1)
         row += 1
 
-        ctk.CTkLabel(grid, text="Output folder").grid(row=0, column=0, sticky="w", padx=(0, 8))
-        out_entry = ctk.CTkEntry(grid, textvariable=self.output_dir)
+        ctk.CTkLabel(grid, text="Output folder", text_color=self.FG).grid(row=0, column=0, sticky="w", padx=(0, 8))
+        out_entry = ctk.CTkEntry(grid, textvariable=self.output_dir, corner_radius=8)
         out_entry.grid(row=0, column=1, sticky="ew", padx=(0, 8))
-        ctk.CTkButton(grid, text="Browse", command=self._browse_output, width=80).grid(row=0, column=2, padx=(0, 8))
-        ctk.CTkButton(grid, text="Open", command=self._open_output, width=60).grid(row=0, column=3)
+        ctk.CTkButton(grid, text="Browse", command=self._browse_output, width=80, corner_radius=8).grid(row=0, column=2, padx=(0, 8))
+        ctk.CTkButton(grid, text="Open", command=self._open_output, width=60, corner_radius=8).grid(row=0, column=3)
 
-        ctk.CTkLabel(grid, text="Clips").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
-        ctk.CTkEntry(grid, textvariable=self.clips_count, width=80).grid(row=1, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkLabel(grid, text="Clips", text_color=self.FG).grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkEntry(grid, textvariable=self.clips_count, width=80, corner_radius=8).grid(row=1, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
 
-        ctk.CTkLabel(grid, text="Min duration (s)").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
-        ctk.CTkEntry(grid, textvariable=self.min_duration, width=80).grid(row=2, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkLabel(grid, text="Min duration (s)", text_color=self.FG).grid(row=2, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkEntry(grid, textvariable=self.min_duration, width=80, corner_radius=8).grid(row=2, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
 
-        ctk.CTkLabel(grid, text="Max duration (s)").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
-        ctk.CTkEntry(grid, textvariable=self.max_duration, width=80).grid(row=3, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkLabel(grid, text="Max duration (s)", text_color=self.FG).grid(row=3, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
+        ctk.CTkEntry(grid, textvariable=self.max_duration, width=80, corner_radius=8).grid(row=3, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
 
-        ctk.CTkLabel(grid, text="Caption style").grid(row=4, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
-        style_menu = ctk.CTkOptionMenu(grid, variable=self.style, values=["classic", "karaoke", "bold-pop", "none"])
+        ctk.CTkLabel(grid, text="Caption style", text_color=self.FG).grid(row=4, column=0, sticky="w", padx=(0, 8), pady=(8, 0))
+        style_menu = ctk.CTkOptionMenu(grid, variable=self.style, values=["classic", "karaoke", "bold-pop", "none"], corner_radius=8)
         style_menu.grid(row=4, column=1, sticky="w", padx=(0, 8), pady=(8, 0))
 
         # Actions
-        self.start_btn = ctk.CTkButton(scroll, text="Start processing", command=self._start, height=40, font=ctk.CTkFont(size=14, weight="bold"))
+        self.start_btn = ctk.CTkButton(scroll, text="Start processing", command=self._start, height=42, font=ctk.CTkFont(size=14, weight="bold"), corner_radius=10)
         self.start_btn.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(20, 8))
         row += 1
 
-        self.progress_bar = ctk.CTkProgressBar(scroll, variable=self.progress)
+        self.progress_bar = ctk.CTkProgressBar(scroll, variable=self.progress, corner_radius=4)
         self.progress_bar.grid(row=row, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 8))
         row += 1
 
-        self.status_lbl = ctk.CTkLabel(scroll, textvariable=self.status, text_color="gray")
+        self.status_lbl = ctk.CTkLabel(scroll, textvariable=self.status, text_color=self.MUTED)
         self.status_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(0, 12))
         row += 1
 
         # Log
-        log_lbl = ctk.CTkLabel(scroll, text="Log", font=ctk.CTkFont(size=16, weight="bold"))
+        log_lbl = ctk.CTkLabel(scroll, text="Log", font=ctk.CTkFont(size=16, weight="bold"), text_color=self.FG)
         log_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(8, 8))
         row += 1
 
-        self.log_text = ctk.CTkTextbox(scroll, height=220, font=ctk.CTkFont(family="Consolas", size=11))
-        self.log_text.grid(row=row, column=0, columnspan=2, sticky="nsew", padx=24, pady=(0, 24))
+        self.log_text = ctk.CTkTextbox(scroll, height=200, font=ctk.CTkFont(family="Consolas", size=11), corner_radius=10)
+        self.log_text.grid(row=row, column=0, columnspan=2, sticky="nsew", padx=24, pady=(0, 12))
         scroll.grid_rowconfigure(row, weight=1)
         row += 1
+
+        # Results section
+        res_lbl = ctk.CTkLabel(scroll, text="Results", font=ctk.CTkFont(size=16, weight="bold"), text_color=self.FG)
+        res_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=24, pady=(8, 8))
+        row += 1
+
+        self.results_frame = ctk.CTkScrollableFrame(scroll, corner_radius=10, height=220)
+        self.results_frame.grid(row=row, column=0, columnspan=2, sticky="nsew", padx=24, pady=(0, 24))
+        scroll.grid_rowconfigure(row, weight=1)
 
         self._log("ClipForge Desktop ready.")
         self._log("Make sure yt-dlp, faster-whisper and ffmpeg are installed.")
 
-    def _set_url_visible(self, visible):
-        if visible:
-            self.url_entry.grid()
-            self.file_entry.grid_remove()
-            self.file_entry.grid(row=10, column=0, sticky="ew", padx=(24, 8), pady=(0, 8))
-        else:
-            self.url_entry.grid_remove()
-            self.file_entry.grid()
-
     def _on_source_change(self, value):
         if value == "Video URL":
-            self._set_url_visible(True)
+            self.url_entry.grid()
+            self.file_row.grid_remove()
         else:
-            self._set_url_visible(False)
+            self.url_entry.grid_remove()
+            self.file_row.grid()
 
     def _browse_file(self):
         path = filedialog.askopenfilename(filetypes=[("Video", "*.mp4 *.mkv *.mov *.webm"), ("All files", "*.*")])
@@ -230,12 +254,12 @@ class ClipForgeDesktop(ctk.CTk):
         try:
             workdir = os.path.join(out, f"job_{int(time.time())}")
             os.makedirs(workdir, exist_ok=True)
+            self.last_workdir = workdir
             self._log(f"Job folder: {workdir}")
 
             # Step 1: download / copy
             self._set_progress(0.05, "Downloading / copying source…")
             if os.path.isfile(src):
-                import shutil
                 dest = os.path.join(workdir, os.path.basename(src))
                 shutil.copy2(src, dest)
                 source_file = dest
@@ -254,7 +278,9 @@ class ClipForgeDesktop(ctk.CTk):
             self._set_progress(0.7, "Rendering clips…")
             rendered = self._render_clips(source_file, highlight_clips, workdir)
 
-            self._set_progress(1.0, f"Done. {len(rendered)} clips ready in:\n{workdir}")
+            self._set_progress(1.0, f"Done. {len(rendered)} clips ready.")
+            self.last_clips = rendered
+            self._render_results(rendered)
             messagebox.showinfo("ClipForge", f"Done. {len(rendered)} clips rendered.\nOutput: {workdir}")
         except Exception as e:
             self._set_progress(0, f"Error: {e}")
@@ -382,6 +408,39 @@ class ClipForgeDesktop(ctk.CTk):
             out.append(out_file)
             self._set_progress(0.7 + 0.3 * (i / max(len(clips), 1)), f"Rendered clip {i}/{len(clips)}")
         return out
+
+    def _render_results(self, clips):
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+
+        if not clips:
+            ctk.CTkLabel(self.results_frame, text="No clips rendered.", text_color=self.MUTED).pack(pady=8)
+            return
+
+        for i, path in enumerate(clips, 1):
+            card = ctk.CTkFrame(self.results_frame, corner_radius=12, border_width=1, border_color=self.BORDER)
+            card.pack(fill="x", pady=6, padx=2)
+
+            title_row = ctk.CTkFrame(card, fg_color="transparent")
+            title_row.pack(fill="x", padx=12, pady=(10, 0))
+            ctk.CTkLabel(title_row, text=f"Clip {i}", font=ctk.CTkFont(size=13, weight="bold"), text_color=self.FG).pack(side="left")
+            ctk.CTkLabel(title_row, text=os.path.basename(path), font=ctk.CTkFont(size=11), text_color=self.MUTED).pack(side="right")
+
+            btn_row = ctk.CTkFrame(card, fg_color="transparent")
+            btn_row.pack(fill="x", padx=12, pady=(8, 10))
+            ctk.CTkButton(btn_row, text="Open file", command=lambda p=path: os.startfile(os.path.dirname(p)) if sys.platform == "win32" else None, width=100, corner_radius=8).pack(side="left", padx=(0, 8))
+            ctk.CTkButton(btn_row, text="Open folder", command=lambda p=path: self._open_output_dir(p), width=110, corner_radius=8).pack(side="left")
+
+    def _open_output_dir(self, path):
+        d = os.path.dirname(path)
+        if not os.path.isdir(d):
+            return
+        if sys.platform == "win32":
+            os.startfile(d)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", d])
+        else:
+            subprocess.Popen(["xdg-open", d])
 
 
 def main():

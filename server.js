@@ -1172,6 +1172,7 @@ async function runJob(id, body) {
       style: body.style || 'classic',
       reframe: body.reframe || 'center',
       titleMode: body.title || 'auto',
+      model: body.model || process.env.WHISPER_MODEL || 'base',
       out: body.out || './output',
       dryRun: false,
       resume: false,

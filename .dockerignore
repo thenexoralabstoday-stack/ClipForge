@@ -1,0 +1,10 @@
+# Keep the build context small and never ship local state or secrets.
+node_modules
+.git
+.env
+data
+output
+storage
+test/fixtures
+*.log
+.DS_Store

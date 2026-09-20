@@ -1,44 +1,52 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+#
+# Built from the Dockerfile rather than Render's Node image, because the pipeline
+# needs ffmpeg, ffprobe, yt-dlp and faster-whisper on the box.
 services:
   - type: web
     name: clipforge
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     plan: starter
     region: oregon
     branch: master
-    rootDir: .
-    buildCommand: npm install
-    startCommand: node src/cli.js ui
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "10000"
+      # 'small' needs roughly 500MB and will be killed on a 512MB instance.
+      # 'base' is the largest that fits comfortably; raise it with the plan.
+      - key: WHISPER_MODEL
+        value: base
+      - key: BASE_URL
+        value: https://clipforge.best
+      - key: YOUTUBE_REDIRECT_URI
+        value: https://clipforge.best/auth/youtube/callback
+      - key: TIKTOK_REDIRECT_URI
+        value: https://clipforge.best/auth/tiktok/callback
+      - key: INSTAGRAM_REDIRECT_URI
+        value: https://clipforge.best/auth/instagram/callback
       - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
         sync: false
       - key: YOUTUBE_CLIENT_ID
         sync: false
       - key: YOUTUBE_CLIENT_SECRET
         sync: false
-      - key: YOUTUBE_REDIRECT_URI
-        sync: false
       - key: TIKTOK_CLIENT_KEY
         sync: false
       - key: TIKTOK_CLIENT_SECRET
         sync: false
-      - key: TIKTOK_REDIRECT_URI
-        sync: false
       - key: INSTAGRAM_APP_ID
         sync: false
       - key: INSTAGRAM_APP_SECRET
-        sync: false
-      - key: INSTAGRAM_REDIRECT_URI
         sync: false
       - key: JWT_SECRET
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
-        sync: false
-      - key: BASE_URL
         sync: false

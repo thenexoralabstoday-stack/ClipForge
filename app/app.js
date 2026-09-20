@@ -121,7 +121,7 @@
     { id: 'billing', label: 'Billing', href: '/billing.html' },
     { id: 'settings', label: 'Settings', href: '/settings.html' },
   ];
-  const FLAME = '<svg viewBox="0 0 24 24"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 1-3 0 2 1 3 2 3 1-3-1-5 2-11z"/></svg>';
+  const MARK = '<img src="/app/clipforge-mark-96.webp" width="96" height="96" alt="">';
 
   /**
    * Wraps the page's <main id="page"> in the sidebar + topbar shell.
@@ -139,7 +139,7 @@
     const primary = NAV.filter(n => !n.secondary), secondary = NAV.filter(n => n.secondary);
     const link = n => `<a class="sb__link ${n.id === active ? 'is-active' : ''}" href="${n.href}" ${n.id === active ? 'aria-current="page"' : ''}>${ICON[n.id]}<span>${n.label}</span></a>`;
     sb.innerHTML = `
-      <a class="sb__brand" href="/home.html"><span class="sb__mark">${FLAME}</span><span class="sb__name">ClipForge</span></a>
+      <a class="sb__brand" href="/home.html"><span class="sb__mark">${MARK}</span><span class="sb__name">ClipForge</span></a>
       <div class="sb__group"><div class="sb__label meta">Workspace</div><nav class="sb__nav">${primary.map(link).join('')}</nav></div>
       <div class="sb__group sb__group--secondary"><div class="sb__label meta">Tools</div><nav class="sb__nav">${secondary.map(link).join('')}</nav></div>
       <div class="sb__spacer"></div>
@@ -150,7 +150,7 @@
     const main = document.createElement('div'); main.className = 'main';
     const topbar = document.createElement('header'); topbar.className = 'topbar';
     const crumbHtml = crumbs.map(c => c.href ? `<a href="${c.href}">${esc(c.label)}</a>` : `<span>${esc(c.label)}</span>`).join('');
-    topbar.innerHTML = `<div class="row" style="gap:14px;min-width:0"><a class="topbar__brand" href="/home.html"><span class="sb__mark">${FLAME}</span>ClipForge</a><div class="topbar__crumbs">${crumbHtml}${crumbs.length ? '<span class="topbar__title">' : '<span class="topbar__title" style="margin:0">'}${esc(title || '')}</span></div></div><div class="topbar__actions"></div>`;
+    topbar.innerHTML = `<div class="row" style="gap:14px;min-width:0"><a class="topbar__brand" href="/home.html"><span class="sb__mark">${MARK}</span>ClipForge</a><div class="topbar__crumbs">${crumbHtml}${crumbs.length ? '<span class="topbar__title">' : '<span class="topbar__title" style="margin:0">'}${esc(title || '')}</span></div></div><div class="topbar__actions"></div>`;
     if (!crumbs.length) topbar.querySelector('.topbar__title').style.cssText = 'margin:0';
     const actionsEl = topbar.querySelector('.topbar__actions');
     for (const a of actions) {

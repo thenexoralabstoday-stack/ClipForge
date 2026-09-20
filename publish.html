@@ -1,398 +1,125 @@
 <!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
-<!-- Contact: thenexoralabstoday@gmail.com -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset=`"UTF-8`"><meta name=`"clipforge-api-base`" content=`"https://clipforge-ouco.onrender.com/api`">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClipForge — Publishing Dashboard</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-  :root {
-    --bg: #06040a;
-    --bg2: #0d0806;
-    --panel: #1a0f0a;
-    --panel2: #241610;
-    --text: #f5ebe0;
-    --text2: #d4c4b5;
-    --muted: #8a7a6e;
-    --fire: #ff3d00;
-    --fire2: #ff6a00;
-    --fire3: #ff9d00;
-    --fire4: #ffd166;
-    --border: rgba(255, 255, 255, 0.055);
-    --border2: rgba(255, 255, 255, 0.09);
-    --gradient: linear-gradient(135deg, #ff3d00 0%, #ff6a00 100%);
-    --gradient2: linear-gradient(135deg, #ff6a00 0%, #ff9d00 100%);
-    --success: #10b981;
-    --error: #ef4444;
-    --radius: 12px;
-    --shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  .app-grain {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-  }
-
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(6, 4, 10, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 800;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: var(--gradient);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: white;
-    font-weight: 800;
-  }
-
-  h1 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
-
-  .container {
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-
-  .section { margin-bottom: 2.5rem; }
-  .section h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.01em; }
-
-  .accounts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-  }
-
-  .account-card {
-    background: rgba(26, 15, 10, 0.55);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.25rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .account-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    transition: all 0.35s;
-  }
-
-  .account-card:hover {
-    border-color: rgba(255, 106, 0, 0.35);
-    transform: translateX(6px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
-  }
-
-  .account-card:hover::before {
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
-  }
-
-  .account-info h3 { margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600; }
-  .account-info p { margin: 0; font-size: 0.85rem; color: var(--muted); }
-  .connected { color: var(--success) !important; }
-  .disconnected { color: var(--error) !important; }
-
-  .btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-    font-family: inherit;
-  }
-
-  .btn-primary {
-    background: var(--gradient);
-    color: white;
-    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
-  }
-
-  .btn-success {
-    background: var(--success);
-    color: white;
-  }
-
-  .btn-success:hover { opacity: 0.9; transform: translateY(-2px); }
-
-  .btn-danger {
-    background: var(--error);
-    color: white;
-  }
-
-  .btn-danger:hover { opacity: 0.9; transform: translateY(-2px); }
-
-  .clips-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .clip-card {
-    background: rgba(26, 15, 10, 0.55);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    position: relative;
-  }
-
-  .clip-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    transition: all 0.35s;
-  }
-
-  .clip-card:hover {
-    border-color: rgba(255, 106, 0, 0.35);
-    transform: translateY(-6px);
-    box-shadow: 0 16px 48px rgba(255, 61, 0, 0.12);
-  }
-
-  .clip-card:hover::before {
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
-  }
-
-  .clip-thumb {
-    width: 100%;
-    aspect-ratio: 9/16;
-    object-fit: cover;
-    background: #000;
-    display: block;
-  }
-
-  .clip-body { padding: 1.25rem; }
-  .clip-title { font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem; letter-spacing: -0.01em; }
-  .clip-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
-
-  .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-  .btn-sm {
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    border-radius: 8px;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    header { padding: 1rem; flex-wrap: wrap; gap: 0.75rem; }
-    .container { padding: 1rem; }
-    .accounts { grid-template-columns: 1fr; }
-    .clips-grid { grid-template-columns: 1fr; }
-  }
-</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publish — ClipForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app/app.css">
 </head>
 <body>
-<div class="app-grain" aria-hidden="true"></div>
-<header>
-  <div class="logo">
-    <div class="logo-icon">C</div>
-    <span>ClipForge</span>
-  </div>
-  <button class="btn btn-primary" onclick="publishAll()">Publish All Clips</button>
-</header>
-<div class="container fade-in-up">
-  <div class="section">
-    <h2>Connected Accounts</h2>
-    <div class="accounts" id="accounts"></div>
-  </div>
-  <div class="section">
-    <h2>Clips</h2>
-    <div class="clips-grid" id="clips"></div>
-  </div>
-</div>
-<script>
-  const jobId = new URLSearchParams(window.location.search).get('job') || 'video';
-  let clips = [];
-  let social = {};
-const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
+<div class="grain" aria-hidden="true"></div>
+<main id="page">
+  <div class="page-head"><div><h1>Publish</h1><p>Send rendered clips to the platforms you’ve connected. Each upload is logged here.</p></div></div>
 
-  async function loadData() {
-    await Promise.all([loadClips(), loadSocial()]);
-    renderAccounts();
-    renderClips();
+  <div class="panel">
+    <div class="panel__head"><div><h2>Destinations</h2><p>Manage accounts in <a class="link" href="/settings.html#connections">Settings → Connections</a>.</p></div></div>
+    <div class="panel__body"><div class="row" id="accounts"></div></div>
+  </div>
+
+  <div class="panel" id="picker">
+    <div class="panel__head"><div><h2>Project</h2><p>Choose which project’s clips to publish.</p></div></div>
+    <div class="panel__body"><div class="row"><select class="select" id="projectSelect" style="max-width:420px"></select></div></div>
+  </div>
+
+  <section class="panel">
+    <div class="panel__head"><div><h2>Clips</h2><p id="clipsSub">Only rendered clips can be published.</p></div><button class="btn btn--primary" id="publishAll" hidden>Publish all rendered</button></div>
+    <div class="list" id="clips"><div class="empty small">Pick a project above.</div></div>
+  </section>
+</main>
+
+<script src="/app/app.js"></script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  let projectId = q.get('project'); const jobId = q.get('job');
+  const shell = CF.mount({ active: 'publish', title: 'Publish' });
+  if (!shell) return;
+  const $ = id => document.getElementById(id);
+  const PLATFORMS = ['youtube', 'tiktok', 'instagram'];
+  let social = {}, clips = [];
+
+  async function loadSocial() {
+    try { social = (await CF.api('/auth/social')).social || {}; } catch { social = {}; }
+    $('accounts').innerHTML = PLATFORMS.map(p => `<span class="badge ${social[p] ? 'badge--ok' : ''}">${p}${social[p] ? '' : ' · off'}</span>`).join('') +
+      (PLATFORMS.some(p => social[p]) ? '' : '<a class="btn btn--sm" href="/settings.html#connections" style="margin-left:auto">Connect an account</a>');
+  }
+
+  async function loadProjects() {
+    const { projects } = await CF.api('/projects');
+    const sel = $('projectSelect');
+    sel.innerHTML = '<option value="">Select a project…</option>' + projects.map(p => `<option value="${CF.esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${CF.esc(p.name)} · ${p.rendersCount || 0} rendered</option>`).join('');
+    sel.onchange = () => { projectId = sel.value; history.replaceState({}, '', projectId ? `?project=${encodeURIComponent(projectId)}` : location.pathname); loadClips(); };
   }
 
   async function loadClips() {
-    const res = await fetch(API + `/clips/${jobId}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    clips = data.clips || [];
-  }
-
-  async function loadSocial() {
-    const token = localStorage.getItem('clipforge_token');
-    if (!token) return;
-    const res = await fetch(API + '/auth/social', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    social = data.social || {};
-  }
-
-  function renderAccounts() {
-    const platforms = ['youtube', 'tiktok', 'instagram'];
-    const container = document.getElementById('accounts');
-    container.innerHTML = platforms.map(p => {
-      const connected = !!social[p];
-      return `
-        <div class="account-card">
-          <div class="account-info">
-            <h3>${p.charAt(0).toUpperCase() + p.slice(1)}</h3>
-            <p class="${connected ? 'connected' : 'disconnected'}">${connected ? 'Connected' : 'Not connected'}</p>
+    if (jobId) return loadLegacy();
+    if (!projectId) { $('clips').innerHTML = '<div class="empty small">Pick a project above.</div>'; $('publishAll').hidden = true; return; }
+    try {
+      clips = (await CF.api(`/projects/${projectId}/clips`)).clips || [];
+      const ready = clips.filter(c => c.renderStatus === 'done');
+      $('clipsSub').textContent = `${ready.length} of ${clips.length} clips rendered`;
+      $('publishAll').hidden = !ready.length;
+      if (!clips.length) { $('clips').innerHTML = `<div class="empty"><h3>No clips in this project</h3><a class="btn" href="/project.html?id=${encodeURIComponent(projectId)}">Open project</a></div>`; return; }
+      $('clips').innerHTML = clips.map((c, i) => `
+        <div class="clip" data-id="${CF.esc(c.id)}">
+          <div class="clip__thumb">${c.renderPath ? `<video src="${CF.esc(c.renderPath)}" preload="metadata" muted playsinline></video>` : '<svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg>'}</div>
+          <div>
+            <div class="clip__title">${CF.esc(c.title || 'Clip ' + (i + 1))}</div>
+            <div class="clip__hook">${CF.esc(c.hook || '')}</div>
+            <div class="clip__meta"><span class="mono muted">${CF.fmt.secs(c.start)} → ${CF.fmt.secs(c.end)}</span>${CF.badge(c.renderStatus || 'pending')}${(c.publishResults || []).map(r => `<span class="badge ${r.status === 'published' ? 'badge--ok' : r.status === 'failed' ? 'badge--bad' : ''}">${CF.esc(r.platform)} ${CF.esc(r.status)}</span>`).join('')}</div>
+            <div class="row" style="margin-top:10px">${PLATFORMS.map(p => `<label class="check" style="align-items:center"><input type="checkbox" data-p="${p}" ${social[p] ? 'checked' : 'disabled'}><span>${CF.fmt.title(p)}</span></label>`).join('')}</div>
           </div>
-          ${connected 
-            ? `<button class="btn btn-danger btn-sm" onclick="disconnect('${p}')">Disconnect</button>`
-            : `<button class="btn btn-primary btn-sm" onclick="connect('${p}')">Connect</button>`
-          }
-        </div>
-      `;
-    }).join('');
+          <div class="clip__side"><button class="btn btn--primary btn--sm" data-publish="${CF.esc(c.id)}" ${c.renderStatus === 'done' ? '' : 'disabled title="Render this clip first"'}>Publish</button></div>
+        </div>`).join('');
+      $('clips').querySelectorAll('[data-publish]').forEach(b => b.onclick = () => publishOne(b.dataset.publish, b));
+    } catch (e) { $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 
-  function renderClips() {
-    const container = document.getElementById('clips');
-    container.innerHTML = clips.map((clip, i) => `
-      <div class="clip-card fade-in-up" style="animation-delay: ${i * 0.05}s">
-        <img class="clip-thumb" src="/output/${jobId}/clips/clip-${String(i + 1).padStart(2, '0')}.jpg" alt="thumbnail">
-        <div class="clip-body">
-          <div class="clip-title">${escapeHtml(clip.title || 'Clip ' + (i + 1))}</div>
-          <div class="clip-meta">${clip.start?.toFixed(1)}s - ${clip.end?.toFixed(1)}s</div>
-          <div class="actions">
-            <button class="btn btn-primary btn-sm" onclick="publish(${i}, 'youtube')">YouTube</button>
-            <button class="btn btn-primary btn-sm" onclick="publish(${i}, 'tiktok')">TikTok</button>
-            <button class="btn btn-primary btn-sm" onclick="publish(${i}, 'instagram')">Instagram</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
+  async function publishOne(id, btn) {
+    const row = btn.closest('.clip'); const c = clips.find(x => x.id === id);
+    const platforms = [...row.querySelectorAll('input[data-p]:checked')].map(i => i.dataset.p);
+    if (!platforms.length) return CF.toast('Choose at least one connected platform', 'error');
+    CF.busy(btn, true);
+    try {
+      const { results } = await CF.api(`/clips/${id}/publish`, { method: 'POST', body: JSON.stringify({ platforms, title: c.title, description: c.caption || c.hook, hashtags: c.hashtags || [] }) });
+      c.publishResults = results;
+      const ok = results.filter(r => r.status === 'published').length;
+      CF.toast(ok ? `Published to ${ok} platform${ok === 1 ? '' : 's'}` : (results[0]?.error || 'Nothing was published'), ok ? 'success' : 'error', 6000);
+      loadClips();
+    } catch (e) { CF.toast(e.message, 'error', 6000); CF.busy(btn, false); }
+  }
+  $('publishAll').onclick = async () => {
+    const platforms = PLATFORMS.filter(p => social[p]);
+    if (!platforms.length) return CF.toast('Connect a platform first', 'error');
+    if (!await CF.confirm(`Publish every rendered clip to ${platforms.map(CF.fmt.title).join(', ')}?`, { label: 'Publish all', kind: 'primary', title: 'Publish all rendered clips' })) return;
+    for (const b of $('clips').querySelectorAll('[data-publish]:not([disabled])')) await publishOne(b.dataset.publish, b);
+  };
+
+  /* Legacy one-shot jobs (Quick forge output) publish through the older endpoint. */
+  async function loadLegacy() {
+    $('picker').hidden = true;
+    try {
+      clips = (await CF.api(`/clips/${jobId}`)).clips || [];
+      $('clipsSub').textContent = `Job ${jobId} · ${clips.length} clips`;
+      $('clips').innerHTML = clips.map((c, i) => `
+        <div class="clip"><div class="clip__thumb"><video src="${CF.esc(c.url || `/output/${jobId}/clips/clip-${String(i + 1).padStart(2, '0')}.mp4`)}" preload="metadata" muted playsinline></video></div>
+        <div><div class="clip__title">${CF.esc(c.title || 'Clip ' + (i + 1))}</div><div class="clip__hook">${CF.esc(c.hook || '')}</div><div class="clip__meta"><span class="mono muted">${CF.fmt.secs(c.start)} → ${CF.fmt.secs(c.end)}</span></div></div>
+        <div class="clip__side"><div class="item__actions">${PLATFORMS.map(p => `<button class="btn btn--sm" data-legacy="${i}" data-p="${p}" ${social[p] ? '' : 'disabled'}>${CF.fmt.title(p)}</button>`).join('')}</div></div></div>`).join('');
+      $('clips').querySelectorAll('[data-legacy]').forEach(b => b.onclick = async () => {
+        const c = clips[+b.dataset.legacy]; CF.busy(b, true);
+        try { await CF.api('/publish', { method: 'POST', body: JSON.stringify({ clipPath: c.url || `/output/${jobId}/clips/clip-${String(+b.dataset.legacy + 1).padStart(2, '0')}.mp4`, platform: b.dataset.p, metadata: { title: c.title, caption: c.caption, hashtags: c.hashtags || [] } }) }); CF.toast(`Published to ${b.dataset.p}`, 'success'); }
+        catch (e) { CF.toast(e.message, 'error', 6000); } finally { CF.busy(b, false); }
+      });
+    } catch (e) { $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  async function connect(platform) {
-    const res = await fetch(API + `/auth/${platform}/url`);
-    const data = await res.json();
-    if (data.url) window.open(data.url, '_blank');
-  }
-
-  async function disconnect(platform) {
-    const token = localStorage.getItem('clipforge_token');
-    await fetch(API + `/auth/${platform}/disconnect`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    loadData();
-  }
-
-  async function publish(i, platform) {
-    const token = localStorage.getItem('clipforge_token');
-    await fetch(API + `/publish/${jobId}/${i}/${platform}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    showToast('Published to ' + platform);
-  }
-
-  function publishAll() {
-    clips.forEach((_, i) => {
-      ['youtube', 'tiktok', 'instagram'].forEach(p => publish(i, p));
-    });
-  }
-
-  function showToast(msg) {
-    const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:rgba(26,15,10,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:1rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:4000;color:#f5ebe0;font-size:0.9rem;';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
-
-  loadData();
+  await loadSocial();
+  if (!jobId) await loadProjects().catch(e => CF.toast(e.message, 'error'));
+  loadClips();
+})();
 </script>
 </body>
 </html>

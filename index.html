@@ -1580,7 +1580,7 @@
       <a href="#pipeline">How it works</a>
       <a href="#pricing">Pricing</a>
       <a href="#" onclick="showContact()">Contact</a>
-      <a href="#" class="nav-cta" onclick="showAuth('signup')">Open ClipForge</a>
+      <a href="#" class="nav-cta" onclick="showAuth('signup')">Sign in</a>
     </div>
   </nav>
 
@@ -1948,145 +1948,6 @@
   </div>
 </div>
 
-<!-- Dashboard -->
-<div id="dashboard" class="dashboard">
-  <div class="app-grain" aria-hidden="true"></div>
-  <header class="dashboard-header">
-    <div class="dashboard-container" style="display: flex; justify-content: space-between; align-items: center;">
-      <div class="nav-logo">
-        <div class="nav-logo-icon">C</div>
-        <span class="nav-logo-text">ClipForge</span>
-      </div>
-      <div style="display: flex; gap: 1rem; align-items: center;">
-        <div style="text-align: right;">
-          <div style="font-weight: 600; font-size: 0.9rem;" id="userName">User</div>
-          <div style="font-size: 0.8rem; color: var(--muted);" id="userPlan">Free Plan</div>
-        </div>
-        <button class="btn btn-secondary" onclick="window.location.href='/projects.html'" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Projects</button>
-        <button class="btn btn-secondary" onclick="window.location.href='/billing'" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Billing</button>
-        <button class="btn btn-secondary" onclick="logout()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Sign Out</button>
-      </div>
-    </div>
-  </header>
-
-  <div class="dashboard-container">
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">⏱️</div>
-        <div class="stat-info">
-          <h4>Minutes Used</h4>
-          <p id="minutesUsed">0 / 60</p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🎬</div>
-        <div class="stat-info">
-          <h4>Clips Created</h4>
-          <p id="clipsCount">0</p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">💳</div>
-        <div class="stat-info">
-          <h4>Current Plan</h4>
-          <p id="currentPlan">Free</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Create New Clips</h3>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Video URL or file</label>
-          <input type="text" id="dashInput" placeholder="https://... or local path">
-        </div>
-        <div class="form-group">
-          <label>Or drop a file</label>
-          <input type="file" id="dashFile" accept="video/*">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Clips</label>
-          <input type="number" id="dashClips" value="5" min="1" max="20">
-        </div>
-        <div class="form-group">
-          <label>Min (s)</label>
-          <input type="number" id="dashMin" value="20">
-        </div>
-        <div class="form-group">
-          <label>Max (s)</label>
-          <input type="number" id="dashMax" value="60">
-        </div>
-        <div class="form-group">
-          <label>Style</label>
-          <select id="dashStyle">
-            <option>karaoke</option>
-            <option>classic</option>
-            <option>bold-pop</option>
-            <option>none</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Reframe</label>
-          <select id="dashReframe">
-            <option>center</option>
-            <option>left</option>
-            <option>right</option>
-            <option>blur</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Provider</label>
-          <select id="dashProvider">
-            <option>anthropic</option>
-            <option>groq</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="startJob()">Generate Clips</button>
-      <div class="progress-bar hidden" id="dashProgress">
-        <div class="progress-fill" id="dashProgressFill" style="width: 0%"></div>
-      </div>
-      <div id="dashLog" style="margin-top: 1rem; font-family: monospace; font-size: 0.85rem; color: var(--muted); max-height: 200px; overflow-y: auto;"></div>
-    </div>
-
-    <div id="dashResults"></div>
-  </div>
-</div>
-
-<!-- Modal for upgrade -->
-<div class="modal" id="upgradeModal">
-  <div class="modal-content">
-    <h2>Upgrade Your Plan</h2>
-    <p style="color: var(--muted); margin-bottom: 1.5rem;">You've reached your monthly limit. Upgrade to continue creating clips.</p>
-    <div class="pricing-grid" style="margin-top: 0;">
-      <div class="pricing-card featured">
-        <h3>Starter</h3>
-        <div class="price">$19<span>/mo</span></div>
-        <ul>
-          <li>150 minutes/month</li>
-          <li>No watermark</li>
-          <li>Claude AI</li>
-        </ul>
-        <button class="btn btn-primary btn-full" onclick="checkout('starter')">Upgrade</button>
-      </div>
-      <div class="pricing-card">
-        <h3>Pro</h3>
-        <div class="price">$49<span>/mo</span></div>
-        <ul>
-          <li>500 minutes/month</li>
-          <li>API access</li>
-          <li>White-label</li>
-        </ul>
-        <button class="btn btn-secondary btn-full" onclick="checkout('pro')">Upgrade</button>
-      </div>
-    </div>
-    <button class="btn btn-secondary btn-full mt-1" onclick="closeModal()">Maybe Later</button>
-  </div>
-</div>
-
 <script>
   const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
   let token = localStorage.getItem('clipforge_token');
@@ -2147,8 +2008,7 @@
       user = data.user;
       localStorage.setItem('clipforge_token', token);
       localStorage.setItem('clipforge_user', JSON.stringify(user));
-      showDashboard();
-      showToast('Account created! Welcome to ClipForge.', 'success');
+      enterApp();
     } catch (e) { showToast(e.message, 'error'); }
   }
 
@@ -2165,8 +2025,7 @@
       user = data.user;
       localStorage.setItem('clipforge_token', token);
       localStorage.setItem('clipforge_user', JSON.stringify(user));
-      showDashboard();
-      showToast('Welcome back!', 'success');
+      enterApp();
     } catch (e) { showToast(e.message, 'error'); }
   }
 
@@ -2180,134 +2039,9 @@
     showToast('Signed out', 'info');
   }
 
-  function showDashboard() {
-    $('landingPage').classList.add('hidden');
-    $('authPage').classList.add('hidden');
-    $('contactPage').classList.add('hidden');
-    $('dashboard').style.display = 'block';
-    $('userName').textContent = user?.name || 'User';
-    $('userPlan').textContent = (user?.plan || 'free') + ' plan';
-    $('currentPlan').textContent = (user?.plan || 'free').charAt(0).toUpperCase() + (user?.plan || 'free').slice(1);
-    updateUsage();
-  }
-
-  async function updateUsage() {
-    try {
-      const data = await api('/usage');
-      $('minutesUsed').textContent = data.minutesUsed + ' / ' + data.minutesLimit;
-      $('clipsCount').textContent = data.clipsCreated;
-      if (data.plan) {
-        $('userPlan').textContent = data.plan + ' plan';
-        $('currentPlan').textContent = data.plan.charAt(0).toUpperCase() + data.plan.slice(1);
-      }
-    } catch (e) { console.error(e); }
-  }
-
-  async function startJob() {
-    const input = $('dashInput').value || $('dashFile').files[0]?.name;
-    if (!input) return showToast('Enter a URL or select a file', 'error');
-
-    try {
-      const usage = await api('/usage');
-      if (usage.minutesUsed >= usage.minutesLimit) {
-        $('upgradeModal').classList.add('active');
-        return;
-      }
-    } catch (e) {
-      showToast(e.message, 'error');
-      return;
-    }
-
-    showLoading(true);
-    $('dashLog').textContent = '';
-    $('dashProgress').classList.remove('hidden');
-
-    const body = {
-      input,
-      clips: $('dashClips').value,
-      min: $('dashMin').value,
-      max: $('dashMax').value,
-      style: $('dashStyle').value,
-      reframe: $('dashReframe').value,
-      provider: $('dashProvider').value,
-    };
-
-    try {
-      const res = await fetch(API + '/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify(body),
-      });
-      const job = await res.json();
-      currentJob = job.id;
-      const evt = new EventSource(API + '/jobs/' + job.id + '/stream');
-      evt.onmessage = (e) => {
-        const d = JSON.parse(e.data);
-        if (d.type === 'log') {
-          appendLog(d.message);
-        }
-        if (d.type === 'done') {
-          evt.close();
-          showLoading(false);
-          renderClips(d.clips);
-          updateUsage();
-          showToast('Clips generated!', 'success');
-        }
-        if (d.type === 'error') {
-          evt.close();
-          showLoading(false);
-          showToast('Error: ' + d.error, 'error');
-        }
-      };
-    } catch (e) {
-      showLoading(false);
-      showToast(e.message, 'error');
-    }
-  }
-
-  function appendLog(msg) {
-    const el = $('dashLog');
-    if (!el) return;
-    el.textContent += msg + '\n';
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function renderClips(clips) {
-    const grid = document.createElement('div');
-    grid.className = 'clip-grid';
-    clips.forEach((c, i) => {
-      const card = document.createElement('div');
-      card.className = 'clip-card';
-      card.innerHTML = '<video controls src="' + c.url + '"></video><div class="clip-card-body">' +
-        '<div class="clip-card-title">' + esc(c.title) + '</div>' +
-        '<div class="clip-card-meta"><span>Score: ' + c.score + '</span><span>Platform: ' + c.platform + '</span></div>' +
-        '<div class="clip-card-tags">' + (c.hashtags || []).map(h => '<span class="tag">#' + esc(h) + '</span>').join('') + '</div>' +
-        '<div class="clip-actions"><button onclick="copyCaption(' + i + ')">Copy Caption</button><a download href="' + c.url + '"><button>Download</button></a></div>' +
-        '</div>';
-      grid.appendChild(card);
-    });
-    $('dashResults').innerHTML = '';
-    $('dashResults').appendChild(grid);
-    window.currentClips = clips;
-  }
-
-  function copyCaption(i) {
-    const clip = window.currentClips[i];
-    navigator.clipboard.writeText(clip.caption).then(() => showToast('Caption copied!', 'success'));
-  }
-
-  async function checkout(plan) {
-    try {
-      const data = await api('/stripe/checkout', {
-        method: 'POST',
-        body: JSON.stringify({ plan }),
-      });
-      if (data.url) window.location.href = data.url;
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  function closeModal() {
-    $('upgradeModal').classList.remove('active');
+  function enterApp() {
+    const next = new URLSearchParams(location.search).get('next');
+    location.href = next && next.startsWith('/') ? next : '/home.html';
   }
 
   function esc(s) {
@@ -2317,7 +2051,6 @@
   function showContact() {
     $('landingPage').classList.add('hidden');
     $('authPage').classList.add('hidden');
-    $('dashboard').style.display = 'none';
     $('contactPage').classList.remove('hidden');
   }
 
@@ -2361,10 +2094,13 @@
     });
   }
 
-  // Init
+  // Init: signed-in visitors go straight to the app; ?next= means a page asked for sign-in first
   if (token && user) {
-    showDashboard();
+    enterApp();
+  } else if (new URLSearchParams(location.search).has('next')) {
+    showAuth('login');
   }
+  document.querySelectorAll('#loginForm input, #signupForm input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') (i.closest('#loginForm') ? login : signup)(); }));
 </script>
 </body>
 </html>

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import Stripe from 'stripe';
 import { runPipeline } from './src/pipeline.js';
 import { getYouTubeAuthUrl, exchangeYouTubeCode, getTikTokAuthUrl, exchangeTikTokCode, getInstagramAuthUrl, exchangeInstagramCode } from './src/uploads.js';
@@ -14,7 +15,7 @@ import { getMemeSounds, analyzeMemeSoundMoments, generateMemeSoundPlan } from '.
 import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
 import { ClipAnalysisService } from './src/ai.js';
 import { saveFile, getProjectDir, ensureStorageDirs, fileExists, getStoragePath, downloadFromUrl } from './src/storage.js';
-import { generateId } from './src/db.js';
+import { generateId, now } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
@@ -64,7 +65,7 @@ function updateUser(id, data) {
   return users[id];
 }
 
-function hashPassword(pw) {
+function legacyHash(pw) {
   let hash = 0;
   for (let i = 0; i < pw.length; i++) {
     const char = pw.charCodeAt(i);
@@ -72,6 +73,21 @@ function hashPassword(pw) {
     hash = hash & hash;
   }
   return String(hash);
+}
+
+function hashPassword(pw) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return `scrypt:${salt}:${crypto.scryptSync(pw, salt, 64).toString('hex')}`;
+}
+
+function verifyPassword(pw, stored) {
+  if (typeof stored !== 'string') return false;
+  if (stored.startsWith('scrypt:')) {
+    const [, salt, hex] = stored.split(':');
+    const a = crypto.scryptSync(pw, salt, 64), b = Buffer.from(hex, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+  return legacyHash(pw) === stored;
 }
 
 function bootstrapAdmin() {
@@ -96,14 +112,21 @@ function bootstrapAdmin() {
 
 bootstrapAdmin();
 
-app.use(cors({ origin: 'https://thenexoralabstoday-stack.github.io', credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: 'application/json' }));
 app.use('/output', express.static(path.resolve('./output')));
 app.use('/storage', express.static(path.resolve('./storage')));
-app.use(express.static(path.join(__dirname)));
+app.use('/app', express.static(path.join(__dirname, 'app'), { maxAge: '1h' }));
+app.use('/landing', express.static(path.join(__dirname, 'landing')));
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// Only the page files are served from the repo root. Everything else (server.js, src/, data/, .env) stays private.
+const PAGES = ['index', 'home', 'projects', 'project', 'editor', 'publish', 'billing', 'settings', 'meme-sounds', 'connections'];
+const page = name => (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, name + '.html'));
+app.get('/', page('index'));
+for (const name of PAGES) app.get(`/${name}.html`, page(name));
+app.get('/settings', page('settings'));
+app.get('/home', page('home'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
@@ -137,6 +160,8 @@ app.post('/api/contact', (req, res) => {
 app.post('/api/auth/signup', (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address' });
+  if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
   const users = readUsers();
   if (users[email]) return res.status(400).json({ error: 'Email already exists' });
   const id = email;
@@ -150,7 +175,8 @@ app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   const users = readUsers();
   const user = users[email];
-  if (!user || user.password !== hashPassword(password)) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user || !verifyPassword(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!String(user.password).startsWith('scrypt:')) updateUser(user.id, { password: hashPassword(password) });
   const token = jwt.sign({ id: user.id, email }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, plan: user.plan } });
 });
@@ -164,22 +190,63 @@ app.get('/api/auth/me', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ id: user.id, name: user.name, email: user.email, plan: user.plan, minutesUsed: user.minutesUsed, clipsCreated: user.clipsCreated });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
 // Social auth
+function fail(res, e) {
+  if (e && (e.name === 'JsonWebTokenError' || e.name === 'TokenExpiredError')) {
+    return res.status(401).json({ error: 'Your session expired. Please sign in again.' });
+  }
+  console.error(e);
+  res.status(500).json({ error: e?.message || 'Something went wrong' });
+}
+
+function userFromToken(req) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return null;
+  try { return getUser(jwt.verify(token, JWT_SECRET).id); } catch { return null; }
+}
+
 app.get('/api/auth/:platform/url', (req, res) => {
   const platform = req.params.platform;
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
   try {
+    // The provider echoes `state` back to the callback, which is how we know whose account this is.
+    const state = jwt.sign({ id: user.id, platform }, JWT_SECRET, { expiresIn: '15m' });
     let url;
-    if (platform === 'youtube') url = getYouTubeAuthUrl();
-    else if (platform === 'tiktok') url = getTikTokAuthUrl();
-    else if (platform === 'instagram') url = getInstagramAuthUrl();
+    if (platform === 'youtube') url = getYouTubeAuthUrl(state);
+    else if (platform === 'tiktok') url = getTikTokAuthUrl(state);
+    else if (platform === 'instagram') url = getInstagramAuthUrl(state);
     else return res.status(400).json({ error: 'Unsupported platform' });
     res.json({ url });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/auth/:platform/callback', async (req, res) => {
+  const platform = req.params.platform;
+  const back = q => res.redirect(`/settings.html?${q}#connections`);
+  const { code, state, error, error_description } = req.query;
+  if (error || !code) return back('error=' + encodeURIComponent(error_description || error || 'The provider returned no code'));
+  try {
+    const decoded = jwt.verify(String(state), JWT_SECRET);
+    if (decoded.platform !== platform) throw new Error('State mismatch');
+    let result;
+    if (platform === 'youtube') result = await exchangeYouTubeCode(String(code));
+    else if (platform === 'tiktok') result = await exchangeTikTokCode(String(code));
+    else if (platform === 'instagram') result = await exchangeInstagramCode(String(code));
+    else return back('error=Unsupported+platform');
+    const users = readUsers();
+    if (!users[decoded.id]) return back('error=User+not+found');
+    users[decoded.id].social = { ...(users[decoded.id].social || {}), [platform]: { ...result, connectedAt: Date.now() } };
+    writeUsers(users);
+    back('connected=' + platform);
+  } catch (e) {
+    back('error=' + encodeURIComponent(e.message));
   }
 });
 
@@ -199,12 +266,12 @@ app.post('/api/auth/:platform/exchange', async (req, res) => {
     else return res.status(400).json({ error: 'Unsupported platform' });
 
     const users = readUsers();
-    users[user.id].social = { ...users[user.id].social, [platform]: result };
+    users[user.id].social = { ...users[user.id].social, [platform]: { ...result, connectedAt: Date.now() } };
     writeUsers(users);
 
     res.json({ ok: true, platform, connected: true });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -217,8 +284,53 @@ app.get('/api/auth/social', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ social: user.social || {} });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
+});
+
+// Profile & settings
+const DEFAULT_SETTINGS = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic' };
+const SETTINGS_ENUM = { style: ['karaoke', 'classic', 'bold-pop', 'none'], reframe: ['center', 'left', 'right', 'blur'], provider: ['anthropic', 'groq'] };
+function cleanSettings(input, base) {
+  const s = { ...base };
+  const num = (k, lo, hi) => { const v = Number(input[k]); if (Number.isFinite(v)) s[k] = Math.min(hi, Math.max(lo, Math.round(v))); };
+  num('clips', 1, 20); num('min', 5, 300); num('max', 10, 600);
+  for (const k of Object.keys(SETTINGS_ENUM)) if (SETTINGS_ENUM[k].includes(input[k])) s[k] = input[k];
+  if (s.min >= s.max) s.max = s.min + 10;
+  return s;
+}
+
+app.get('/api/me/settings', (req, res) => {
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  res.json({ settings: { ...DEFAULT_SETTINGS, ...(user.settings || {}) } });
+});
+
+app.patch('/api/me/settings', (req, res) => {
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  const settings = cleanSettings(req.body || {}, { ...DEFAULT_SETTINGS, ...(user.settings || {}) });
+  updateUser(user.id, { settings });
+  res.json({ settings });
+});
+
+app.patch('/api/me', (req, res) => {
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  const name = String(req.body?.name || '').trim().slice(0, 80);
+  if (name.length < 2) return res.status(400).json({ error: 'Name is too short' });
+  const u = updateUser(user.id, { name });
+  res.json({ user: { id: u.id, name: u.name, email: u.email, plan: u.plan } });
+});
+
+app.post('/api/me/password', (req, res) => {
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  const { current, next } = req.body || {};
+  if (!verifyPassword(String(current || ''), user.password)) return res.status(400).json({ error: 'Current password is incorrect' });
+  if (String(next || '').length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  updateUser(user.id, { password: hashPassword(String(next)) });
+  res.json({ ok: true });
 });
 
 // Usage
@@ -233,7 +345,7 @@ app.get('/api/usage', (req, res) => {
     const limit = user.plan === 'admin' ? Infinity : plan.minutes;
     res.json({ minutesUsed: user.minutesUsed || 0, minutesLimit: limit, clipsCreated: user.clipsCreated || 0, plan: user.plan });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -262,14 +374,14 @@ app.post('/api/stripe/checkout', (req, res) => {
         },
         quantity: 1,
       }],
-      success_url: `${BASE_URL}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${BASE_URL}/?canceled=true`,
+      success_url: `${BASE_URL}/home.html?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${BASE_URL}/billing.html?canceled=true`,
       metadata: { userId: user.id, plan },
     });
 
     res.json({ url: session.url });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -289,7 +401,7 @@ app.post('/api/stripe/portal', async (req, res) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
-      return_url: `${BASE_URL}/dashboard`,
+      return_url: `${BASE_URL}/billing.html`,
     });
 
     res.json({ url: session.url });
@@ -353,7 +465,7 @@ app.post('/api/jobs', async (req, res) => {
     JOBS.set(id, job);
     res.json({ id });
 
-    runJob(id, req.body).then(() => {
+    runJob(id, { ...DEFAULT_SETTINGS, ...(user.settings || {}), ...req.body }).then(() => {
       const j = JOBS.get(id);
       if (j && j.status === 'done' && j.minutesUsed) {
         const u = getUser(user.id);
@@ -366,7 +478,7 @@ app.post('/api/jobs', async (req, res) => {
       }
     }).catch(() => {});
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -464,7 +576,7 @@ app.post('/api/publish', async (req, res) => {
     const fullPath = path.resolve(`.${clipPath}`);
     if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'clip file not found' });
 
-    const { uploadClip } = await import('../uploads.js');
+    const { uploadClip } = await import('./src/uploads.js');
     const opts = { ...social[platform], privacy: 'public' };
     const id = await uploadClip(fullPath, platform, metadata, opts);
     res.json({ ok: true, platform, id, message: `Uploaded to ${platform}` });
@@ -567,7 +679,7 @@ app.get('/api/projects', (req, res) => {
     const projects = readProjects().filter(p => p.userId === user.id);
     res.json({ projects });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -607,7 +719,7 @@ app.post('/api/projects', (req, res) => {
     
     res.json({ project });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -624,7 +736,7 @@ app.get('/api/projects/:id', (req, res) => {
     
     res.json({ project });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -725,7 +837,7 @@ app.get('/api/projects/:id/clips', (req, res) => {
     const clips = readClips().filter(c => c.projectId === project.id);
     res.json({ clips });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -768,7 +880,7 @@ app.post('/api/projects/:id/clips', async (req, res) => {
     
     res.json({ clips: saved });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -789,7 +901,7 @@ app.patch('/api/clips/:id', (req, res) => {
     
     res.json({ clip: clips[idx] });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -810,7 +922,7 @@ app.delete('/api/clips/:id', (req, res) => {
     
     res.json({ ok: true });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -937,7 +1049,7 @@ app.post('/api/clips/:id/render', async (req, res) => {
       res.status(500).json({ error: e.message });
     }
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -951,7 +1063,7 @@ app.get('/api/social/accounts', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ accounts: user.social || {} });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -968,7 +1080,7 @@ app.post('/api/auth/:platform/disconnect', (req, res) => {
     updateUser(user.id, { social });
     res.json({ ok: true, accounts: social });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 
@@ -1006,7 +1118,7 @@ app.post('/api/clips/:id/publish', async (req, res) => {
           continue;
         }
         
-        const { uploadClip } = await import('../uploads.js');
+        const { uploadClip } = await import('./src/uploads.js');
         const id = await uploadClip(fullPath, platform, { title, caption: description, hashtags }, { ...social[platform] });
         results.push({ platform, status: 'published', id });
       } catch (e) {
@@ -1016,7 +1128,7 @@ app.post('/api/clips/:id/publish', async (req, res) => {
     
     res.json({ ok: true, results });
   } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
+    fail(res, e);
   }
 });
 

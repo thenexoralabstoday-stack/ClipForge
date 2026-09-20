@@ -1,0 +1,209 @@
+<!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — ClipForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app/app.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<main id="page">
+  <div class="page-head"><div><h1>Settings</h1><p>Your account, the platforms ClipForge can publish to, and the defaults every new job starts from.</p></div></div>
+
+  <nav class="tabs" role="tablist">
+    <a class="tab" href="#profile" role="tab" data-tab="profile">Profile</a>
+    <a class="tab" href="#connections" role="tab" data-tab="connections">Connections</a>
+    <a class="tab" href="#defaults" role="tab" data-tab="defaults">Defaults</a>
+    <a class="tab" href="#security" role="tab" data-tab="security">Security</a>
+  </nav>
+
+  <!-- Profile -->
+  <section class="tabpanel" id="tab-profile" role="tabpanel" hidden>
+    <div class="grid grid--2" style="align-items:start">
+      <div class="panel">
+        <div class="panel__head"><h2>Profile</h2></div>
+        <div class="panel__body">
+          <div class="field"><label for="pName">Name</label><input class="input" id="pName" maxlength="80"></div>
+          <div class="field"><label for="pEmail">Email</label><input class="input" id="pEmail" readonly><span class="help">Your email is your sign-in and can’t be changed here.</span></div>
+        </div>
+        <div class="panel__foot"><button class="btn btn--primary" id="pSave">Save profile</button></div>
+      </div>
+      <div class="panel">
+        <div class="panel__head"><h2>Plan</h2></div>
+        <div class="panel__body">
+          <div class="row row--between"><span class="score" id="planName">—</span><span class="badge badge--ember" id="planBadge">—</span></div>
+          <div class="usage" id="planBar"><i style="width:0"></i></div>
+          <p class="small muted" id="planText"></p>
+          <p class="small muted">Member since <span id="planSince">—</span></p>
+        </div>
+        <div class="panel__foot"><a class="btn" href="/billing.html">Manage plan</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Connections -->
+  <section class="tabpanel" id="tab-connections" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel__head"><div><h2>Connected platforms</h2><p>Connect an account once; every project can then publish straight to it.</p></div></div>
+      <div class="list" id="connections"><div class="empty small">Loading…</div></div>
+    </div>
+    <p class="small muted" style="margin-top:12px">ClipForge only asks for permission to upload videos. It never reads your messages, followers or analytics, and you can disconnect at any time.</p>
+  </section>
+
+  <!-- Defaults -->
+  <section class="tabpanel" id="tab-defaults" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel__head"><div><h2>Job defaults</h2><p>Pre-filled into Quick forge and used when a project is analysed.</p></div></div>
+      <div class="panel__body">
+        <div class="fields">
+          <div class="field"><label for="dClips">Clips per video</label><input class="input" id="dClips" type="number" min="1" max="20"></div>
+          <div class="field"><label for="dMin">Min length (s)</label><input class="input" id="dMin" type="number" min="5" max="300"></div>
+          <div class="field"><label for="dMax">Max length (s)</label><input class="input" id="dMax" type="number" min="10" max="600"></div>
+        </div>
+        <div class="fields">
+          <div class="field"><label for="dStyle">Caption style</label><select class="select" id="dStyle"><option value="karaoke">Karaoke — word by word</option><option value="classic">Classic</option><option value="bold-pop">Bold pop</option><option value="none">No captions</option></select></div>
+          <div class="field"><label for="dReframe">Reframe to 9:16</label><select class="select" id="dReframe"><option value="center">Center crop</option><option value="left">Left</option><option value="right">Right</option><option value="blur">Blurred bars</option></select></div>
+          <div class="field"><label for="dProvider">AI provider</label><select class="select" id="dProvider"><option value="anthropic">Anthropic (Claude)</option><option value="groq">Groq</option></select><span class="help">Whichever key the server is configured with.</span></div>
+        </div>
+      </div>
+      <div class="panel__foot"><button class="btn btn--ghost" id="dReset">Reset to defaults</button><button class="btn btn--primary" id="dSave">Save defaults</button></div>
+    </div>
+  </section>
+
+  <!-- Security -->
+  <section class="tabpanel" id="tab-security" role="tabpanel" hidden>
+    <div class="grid grid--2" style="align-items:start">
+      <div class="panel">
+        <div class="panel__head"><h2>Change password</h2></div>
+        <div class="panel__body">
+          <div class="field"><label for="sCurrent">Current password</label><input class="input" id="sCurrent" type="password" autocomplete="current-password"></div>
+          <div class="field"><label for="sNew">New password</label><input class="input" id="sNew" type="password" autocomplete="new-password"><span class="help">At least 8 characters.</span></div>
+          <div class="field"><label for="sConfirm">Confirm new password</label><input class="input" id="sConfirm" type="password" autocomplete="new-password"></div>
+        </div>
+        <div class="panel__foot"><button class="btn btn--primary" id="sSave">Update password</button></div>
+      </div>
+      <div class="panel">
+        <div class="panel__head"><h2>Session</h2></div>
+        <div class="panel__body">
+          <p class="small muted">Signing out removes ClipForge’s access token from this browser. Other devices stay signed in.</p>
+        </div>
+        <div class="panel__foot"><button class="btn btn--danger" id="sSignout">Sign out of this device</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/app/app.js"></script>
+<script>
+(async () => {
+  const shell = CF.mount({ active: 'settings', title: 'Settings' });
+  if (!shell) return;
+  const $ = id => document.getElementById(id);
+
+  /* tabs */
+  const TABS = ['profile', 'connections', 'defaults', 'security'];
+  function showTab(name) {
+    if (!TABS.includes(name)) name = 'profile';
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+    TABS.forEach(t => $('tab-' + t).hidden = t !== name);
+  }
+  window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+  showTab(location.hash.slice(1));
+
+  /* profile + plan */
+  const PLAN_MIN = { free: 60, starter: 150, pro: 500, admin: null };
+  try {
+    const me = await CF.api('/auth/me');
+    $('pName').value = me.name || ''; $('pEmail').value = me.email;
+    $('planName').textContent = CF.fmt.title(me.plan) ; $('planBadge').textContent = me.plan;
+    const limit = PLAN_MIN[me.plan] ?? null;
+    const pct = limit ? Math.min(100, (me.minutesUsed / limit) * 100) : 0;
+    $('planBar').querySelector('i').style.width = pct + '%';
+    $('planText').textContent = limit ? `${me.minutesUsed} of ${limit} minutes used this month · ${me.clipsCreated} clips created` : `${me.minutesUsed} minutes used · ${me.clipsCreated} clips created · unlimited`;
+    $('planSince').textContent = CF.fmt.date(me.createdAt);
+  } catch (e) { CF.toast(e.message, 'error'); }
+
+  $('pSave').onclick = async () => {
+    const name = $('pName').value.trim();
+    if (name.length < 2) return CF.toast('Please enter your name', 'error');
+    CF.busy($('pSave'), true);
+    try {
+      const { user } = await CF.api('/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+      CF.session.set(CF.session.token, user);
+      CF.toast('Profile saved', 'success');
+      document.querySelector('.sb__user-name').textContent = user.name;
+      document.querySelector('.avatar').textContent = CF.fmt.initials(user.name);
+    } catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy($('pSave'), false); }
+  };
+
+  /* connections */
+  const PLATFORMS = [
+    { key: 'youtube', name: 'YouTube', desc: 'Upload clips as Shorts to your channel', svg: '<svg viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5A3 3 0 0 0 23 16.8a31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.7 15.1V8.9l6 3.1z"/></svg>' },
+    { key: 'tiktok', name: 'TikTok', desc: 'Post directly to your TikTok account', svg: '<svg viewBox="0 0 24 24"><path d="M16.5 2h-3.2v13.1a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9a6.1 6.1 0 1 0 5.2 6.1V8.6a7.6 7.6 0 0 0 4.5 1.5V6.9A4.6 4.6 0 0 1 16.5 2z"/></svg>' },
+    { key: 'instagram', name: 'Instagram', desc: 'Share clips as Reels', svg: '<svg viewBox="0 0 24 24"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM21.9 8c-.1-1.6-.4-3-1.6-4.2S17.6 2.2 16 2.1C14.4 2 9.6 2 8 2.1c-1.6.1-3 .4-4.2 1.6S2.2 6.4 2.1 8C2 9.6 2 14.4 2.1 16c.1 1.6.4 3 1.6 4.2s2.6 1.5 4.2 1.6c1.6.1 6.4.1 8 0 1.6-.1 3-.4 4.2-1.6s1.5-2.6 1.6-4.2c.1-1.6.1-6.4 0-8zm-2.3 9.9a3.4 3.4 0 0 1-1.9 1.9c-1.3.5-4.5.4-5.7.4s-4.4.1-5.7-.4a3.4 3.4 0 0 1-1.9-1.9c-.5-1.3-.4-4.5-.4-5.7s-.1-4.4.4-5.7a3.4 3.4 0 0 1 1.9-1.9c1.3-.5 4.5-.4 5.7-.4s4.4-.1 5.7.4a3.4 3.4 0 0 1 1.9 1.9c.5 1.3.4 4.5.4 5.7s.1 4.4-.4 5.7z"/></svg>' },
+  ];
+  const flags = CF.takeQuery('connected', 'error');
+  if (flags.connected) { CF.toast(`${CF.fmt.title(flags.connected)} connected`, 'success'); if (!location.hash) location.hash = '#connections'; }
+  if (flags.error) { CF.toast(flags.error, 'error'); if (!location.hash) location.hash = '#connections'; }
+
+  async function loadConnections() {
+    try {
+      const { social } = await CF.api('/auth/social');
+      $('connections').innerHTML = PLATFORMS.map(p => {
+        const c = social[p.key];
+        return `<div class="item">
+          <span class="mark mark--${p.key}">${p.svg}</span>
+          <div class="item__body"><div class="item__title">${p.name}</div><div class="item__sub">${c ? `Connected ${CF.fmt.ago(c.connectedAt)}` : p.desc}</div></div>
+          ${c ? '<span class="badge badge--ok">connected</span>' : '<span class="badge">not connected</span>'}
+          <div class="item__actions">${c ? `<button class="btn btn--danger btn--sm" data-disconnect="${p.key}">Disconnect</button>` : `<button class="btn btn--primary btn--sm" data-connect="${p.key}">Connect</button>`}</div>
+        </div>`;
+      }).join('');
+      $('connections').querySelectorAll('[data-connect]').forEach(b => b.onclick = () => connect(b.dataset.connect, b));
+      $('connections').querySelectorAll('[data-disconnect]').forEach(b => b.onclick = () => disconnect(b.dataset.disconnect, b));
+    } catch (e) { $('connections').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
+  }
+  async function connect(platform, btn) {
+    CF.busy(btn, true);
+    try { const { url } = await CF.api(`/auth/${platform}/url`); location.href = url; }
+    catch (e) { CF.busy(btn, false); CF.modal({ title: `${CF.fmt.title(platform)} isn’t set up yet`, body: `<p>${CF.esc(e.message)}</p><p class="small muted">The server needs this platform’s OAuth client ID and secret in its environment. See ENVIRONMENT_VARIABLES.txt in the ClipForge repository.</p>`, actions: [{ label: 'OK', kind: 'primary' }] }); }
+  }
+  async function disconnect(platform, btn) {
+    if (!await CF.confirm(`Disconnect ${CF.fmt.title(platform)}? Clips will no longer publish there until you reconnect.`, { label: 'Disconnect' })) return;
+    CF.busy(btn, true);
+    try { await CF.api(`/auth/${platform}/disconnect`, { method: 'POST' }); CF.toast('Disconnected', 'success'); loadConnections(); }
+    catch (e) { CF.busy(btn, false); CF.toast(e.message, 'error'); }
+  }
+  loadConnections();
+
+  /* defaults */
+  const FALLBACK = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic' };
+  const fill = s => { $('dClips').value = s.clips; $('dMin').value = s.min; $('dMax').value = s.max; $('dStyle').value = s.style; $('dReframe').value = s.reframe; $('dProvider').value = s.provider; };
+  const read = () => ({ clips: +$('dClips').value, min: +$('dMin').value, max: +$('dMax').value, style: $('dStyle').value, reframe: $('dReframe').value, provider: $('dProvider').value });
+  try { fill(await CF.settings.get()); } catch { fill(FALLBACK); }
+  $('dReset').onclick = () => fill(FALLBACK);
+  $('dSave').onclick = async () => {
+    const s = read();
+    if (s.min >= s.max) return CF.toast('Min length must be shorter than max length', 'error');
+    CF.busy($('dSave'), true);
+    try { fill(await CF.settings.save(s)); CF.toast('Defaults saved', 'success'); }
+    catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy($('dSave'), false); }
+  };
+
+  /* security */
+  $('sSave').onclick = async () => {
+    const current = $('sCurrent').value, next = $('sNew').value, confirm = $('sConfirm').value;
+    if (next.length < 8) return CF.toast('New password must be at least 8 characters', 'error');
+    if (next !== confirm) return CF.toast('New passwords don’t match', 'error');
+    CF.busy($('sSave'), true);
+    try { await CF.api('/me/password', { method: 'POST', body: JSON.stringify({ current, next }) }); CF.toast('Password updated', 'success'); $('sCurrent').value = $('sNew').value = $('sConfirm').value = ''; }
+    catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy($('sSave'), false); }
+  };
+  $('sSignout').onclick = CF.logout;
+})();
+</script>
+</body>
+</html>

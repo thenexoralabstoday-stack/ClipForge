@@ -1,424 +1,77 @@
 <!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
-<!-- Contact: thenexoralabstoday@gmail.com -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset=`"UTF-8`"><meta name=`"clipforge-api-base`" content=`"https://clipforge-ouco.onrender.com/api`">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClipForge — Billing</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-  :root {
-    --bg: #06040a;
-    --bg2: #0d0806;
-    --panel: #1a0f0a;
-    --panel2: #241610;
-    --text: #f5ebe0;
-    --text2: #d4c4b5;
-    --muted: #8a7a6e;
-    --fire: #ff3d00;
-    --fire2: #ff6a00;
-    --fire3: #ff9d00;
-    --fire4: #ffd166;
-    --border: rgba(255, 255, 255, 0.055);
-    --border2: rgba(255, 255, 255, 0.09);
-    --gradient: linear-gradient(135deg, #ff3d00 0%, #ff6a00 100%);
-    --gradient2: linear-gradient(135deg, #ff6a00 0%, #ff9d00 100%);
-    --success: #10b981;
-    --error: #ef4444;
-    --radius: 12px;
-    --shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  .app-grain {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-  }
-
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(6, 4, 10, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 800;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: var(--gradient);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: white;
-    font-weight: 800;
-  }
-
-  h1 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
-
-  .container {
-    padding: 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .section-title {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-bottom: 1.5rem;
-    letter-spacing: -0.02em;
-  }
-
-  .usage-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .stat-card {
-    background: rgba(26, 15, 10, 0.65);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .stat-card:hover {
-    border-color: var(--fire2);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.08);
-  }
-
-  .stat-value {
-    font-size: 2rem;
-    font-weight: 800;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.1;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-top: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 600;
-  }
-
-  .current-plan {
-    background: rgba(26, 15, 10, 0.65);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 61, 0, 0.35);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 0 60px rgba(255, 61, 0, 0.08);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .current-plan::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--gradient);
-  }
-
-  .current-plan h2 {
-    margin: 0 0 1rem 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  .plan-card {
-    background: rgba(26, 15, 10, 0.55);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .plan-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    transition: all 0.35s;
-  }
-
-  .plan-card:hover {
-    border-color: rgba(255, 106, 0, 0.35);
-    transform: translateX(6px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
-  }
-
-  .plan-card:hover::before {
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
-  }
-
-  .plan-info h3 { margin: 0 0 0.5rem 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
-  .plan-info p { margin: 0; color: var(--muted); font-size: 0.9rem; }
-  .plan-price { font-size: 1.75rem; font-weight: 800; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
-
-  .btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-    font-family: inherit;
-  }
-
-  .btn-primary {
-    background: var(--gradient);
-    color: white;
-    box-shadow: 0 4px 20px rgba(255, 61, 0, 0.3);
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(255, 61, 0, 0.45);
-  }
-
-  .btn-secondary {
-    background: rgba(36, 22, 16, 0.8);
-    color: var(--text);
-    border: 1px solid var(--border);
-    backdrop-filter: blur(8px);
-  }
-
-  .btn-secondary:hover {
-    border-color: var(--fire2);
-    color: var(--fire3);
-    background: rgba(36, 22, 16, 1);
-  }
-
-  .btn-success { background: var(--success); color: white; }
-  .btn-success:hover { opacity: 0.9; transform: translateY(-2px); }
-
-  .btn-danger { background: var(--error); color: white; }
-  .btn-danger:hover { opacity: 0.9; transform: translateY(-2px); }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-  }
-
-  .btn-sm {
-    padding: 8px 16px;
-    font-size: 0.85rem;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    header { padding: 1rem; flex-wrap: wrap; gap: 0.75rem; }
-    .container { padding: 1rem; }
-    .plan-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
-  }
-</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billing — ClipForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app/app.css">
 </head>
 <body>
-<div class="app-grain" aria-hidden="true"></div>
-<header>
-  <div class="logo">
-    <div class="logo-icon">C</div>
-    <span>ClipForge</span>
-  </div>
-  <button class="btn btn-secondary btn-sm" onclick="window.location.href='/project.html'">Back to Project</button>
-</header>
-<div class="container fade-in-up">
-  <div class="usage-stats" id="usage"></div>
-  
-  <div class="current-plan">
-    <h2>Current Plan</h2>
-    <div id="current-plan"></div>
-  </div>
-  
-  <h2 class="section-title">Available Plans</h2>
-  <div id="plans"></div>
-  
-  <div style="margin-top: 2rem;">
-    <button class="btn btn-primary" onclick="openPortal()">Manage Subscription</button>
-  </div>
-</div>
+<div class="grain" aria-hidden="true"></div>
+<main id="page">
+  <div class="page-head"><div><h1>Billing</h1><p>Plans are billed monthly through Stripe. Minutes count the total length of clips you render.</p></div><button class="btn" id="portal">Manage subscription</button></div>
 
+  <div class="stats">
+    <div class="stat"><div class="stat__v" id="sUsed">—</div><div class="stat__k meta">Minutes used</div></div>
+    <div class="stat"><div class="stat__v" id="sLimit">—</div><div class="stat__k meta">Monthly limit</div></div>
+    <div class="stat"><div class="stat__v" id="sClips">—</div><div class="stat__k meta">Clips created</div></div>
+    <div class="stat"><div class="stat__v" id="sPlan">—</div><div class="stat__k meta">Current plan</div></div>
+  </div>
+
+  <div class="grid grid--3" id="plans"></div>
+  <p class="small muted">Prices in USD. Cancel any time from “Manage subscription”; you keep your plan until the end of the period you paid for.</p>
+</main>
+
+<script src="/app/app.js"></script>
 <script>
-  let user = null;
-const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
-  let plans = {
-    free: { minutes: 60, watermark: true, price: 0 },
-    starter: { minutes: 150, watermark: false, price: 19 },
-    pro: { minutes: 500, watermark: false, price: 49 },
+(async () => {
+  const shell = CF.mount({ active: 'billing', title: 'Billing' });
+  if (!shell) return;
+  const $ = id => document.getElementById(id);
+  const PLANS = [
+    { id: 'free', name: 'Free', price: 0, minutes: 60, features: ['60 minutes of clips a month', 'AI highlight detection', 'Word-by-word captions', 'ClipForge watermark'] },
+    { id: 'starter', name: 'Starter', price: 19, minutes: 150, features: ['150 minutes a month', 'No watermark', 'All caption styles', 'Direct publishing'] , popular: true },
+    { id: 'pro', name: 'Pro', price: 49, minutes: 500, features: ['500 minutes a month', 'No watermark', 'Priority processing', 'Everything in Starter'] },
+  ];
+  let me = null;
+
+  const flags = CF.takeQuery('success', 'canceled');
+  if (flags.success) CF.toast('Payment received — thank you.', 'success');
+  if (flags.canceled) CF.toast('Checkout cancelled.', 'info');
+
+  try {
+    const [usage, user] = await Promise.all([CF.api('/usage'), CF.api('/auth/me')]);
+    me = user;
+    const unlimited = usage.minutesLimit === null || usage.minutesLimit > 1e6;
+    $('sUsed').textContent = usage.minutesUsed; $('sLimit').textContent = unlimited ? '∞' : usage.minutesLimit;
+    $('sClips').textContent = usage.clipsCreated; $('sPlan').textContent = CF.fmt.title(usage.plan);
+  } catch (e) { CF.toast(e.message, 'error'); }
+
+  $('plans').innerHTML = PLANS.map(p => {
+    const current = me?.plan === p.id;
+    return `<div class="panel" style="${p.popular ? 'border-color:rgba(255,90,43,.45)' : ''}">
+      <div class="panel__body">
+        <div class="row row--between"><span class="meta">${p.name}</span>${current ? '<span class="badge badge--ok">current</span>' : p.popular ? '<span class="badge badge--ember">popular</span>' : ''}</div>
+        <div class="score" style="font-size:34px">$${p.price}<small> /month</small></div>
+        <ul style="list-style:none;display:grid;gap:8px;font-size:13px;color:var(--fg-2)">${p.features.map(f => `<li class="row" style="gap:8px"><span style="color:var(--ok)">✓</span>${f}</li>`).join('')}</ul>
+      </div>
+      <div class="panel__foot" style="justify-content:stretch">${current ? '<button class="btn btn--block" disabled>Your plan</button>' : p.id === 'free' ? '<button class="btn btn--block" disabled>Downgrade via subscription</button>' : `<button class="btn btn--block ${p.popular ? 'btn--primary' : ''}" data-plan="${p.id}">Upgrade to ${p.name}</button>`}</div>
+    </div>`;
+  }).join('');
+  $('plans').querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => {
+    CF.busy(b, true);
+    try { const { url } = await CF.api('/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan: b.dataset.plan }) }); if (url) location.href = url; else throw new Error('No checkout URL returned'); }
+    catch (e) { CF.toast(e.message, 'error', 6000); CF.busy(b, false); }
+  });
+  $('portal').onclick = async () => {
+    CF.busy($('portal'), true);
+    try { const { url } = await CF.api('/stripe/portal', { method: 'POST' }); if (url) location.href = url; }
+    catch (e) { CF.toast(e.message, 'error', 6000); CF.busy($('portal'), false); }
   };
-
-  async function loadData() {
-    const token = localStorage.getItem('clipforge_token');
-    if (!token) { window.location.href = '/'; return; }
-    
-    const usageRes = await fetch(API + '/usage', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (usageRes.ok) {
-      const usage = await usageRes.json();
-      renderUsage(usage);
-    }
-    
-    const meRes = await fetch(API + '/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (meRes.ok) {
-      user = await meRes.json();
-      renderCurrentPlan();
-      renderPlans();
-    }
-  }
-
-  function renderUsage(usage) {
-    const container = document.getElementById('usage');
-    container.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-value">${usage.minutesUsed || 0}</div>
-        <div class="stat-label">Minutes Used</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${usage.minutesLimit || 60}</div>
-        <div class="stat-label">Minutes Limit</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${usage.clipsCreated || 0}</div>
-        <div class="stat-label">Clips Created</div>
-      </div>
-    `;
-  }
-
-  function renderCurrentPlan() {
-    const container = document.getElementById('current-plan');
-    const plan = plans[user.plan] || plans.free;
-    container.innerHTML = `
-      <h3 style="margin: 0 0 0.75rem 0; background: var(--gradient2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 1.25rem;">${user.plan.charAt(0).toUpperCase() + user.plan.slice(1)} Plan</h3>
-      <p style="margin: 0; color: var(--muted);">${plan.watermark ? 'Includes watermark' : 'No watermark'} · ${plan.minutes} minutes/month · $${plan.price}/month</p>
-    `;
-  }
-
-  function renderPlans() {
-    const container = document.getElementById('plans');
-    container.innerHTML = Object.entries(plans).map(([id, plan]) => `
-      <div class="plan-card">
-        <div class="plan-info">
-          <h3>${id.charAt(0).toUpperCase() + id.slice(1)}</h3>
-          <p>${plan.watermark ? 'Includes watermark' : 'No watermark'} · ${plan.minutes} minutes/month</p>
-        </div>
-        <div style="text-align: right;">
-          <div class="plan-price">$${plan.price}</div>
-          <button class="btn btn-primary btn-sm" onclick="checkout('${id}')" ${user.plan === id ? 'disabled' : ''}>
-            ${user.plan === id ? 'Current Plan' : 'Upgrade'}
-          </button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  async function checkout(plan) {
-    try {
-      const data = await api('/stripe/checkout', {
-        method: 'POST',
-        body: JSON.stringify({ plan }),
-      });
-      if (data.url) window.location.href = data.url;
-    } catch (e) { alert(e.message); }
-  }
-
-  async function openPortal() {
-    try {
-      const data = await api('/stripe/portal');
-      if (data.url) window.location.href = data.url;
-    } catch (e) { alert(e.message); }
-  }
-
-  async function api(path, opts = {}) {
-    const token = localStorage.getItem('clipforge_token');
-    const res = await fetch('/api' + path, {
-      ...opts,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: 'Bearer ' + token } : {}),
-        ...(opts.headers || {}),
-      },
-    });
-    if (res.status === 401) { window.location.href = '/'; return; }
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    return data;
-  }
-
-  loadData();
+})();
 </script>
 </body>
 </html>

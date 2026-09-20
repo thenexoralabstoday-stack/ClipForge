@@ -1,521 +1,103 @@
 <!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
-<!-- Contact: thenexoralabstoday@gmail.com -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="clipforge-api-base" content="https://clipforge-ouco.onrender.com/api">
-<title>ClipForge — Projects</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-  :root {
-    --bg: #080605;
-    --bg2: #0f0a08;
-    --bg3: #130a06;
-    --panel: #1a0f0a;
-    --panel2: #241610;
-    --text: #f5ebe0;
-    --text2: #d4c4b5;
-    --muted: #8a7a6e;
-    --fire: #ff3d00;
-    --fire2: #ff6a00;
-    --fire3: #ff9d00;
-    --fire4: #ffd166;
-    --border: rgba(255, 255, 255, 0.055);
-    --border2: rgba(255, 255, 255, 0.09);
-    --gradient: linear-gradient(135deg, #ff3d00 0%, #ff6a00 100%);
-    --gradient2: linear-gradient(135deg, #ff6a00 0%, #ff9d00 100%);
-    --success: #10b981;
-    --error: #ef4444;
-    --warning: #f59e0b;
-    --radius: 12px;
-    --shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  .app-grain {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-  }
-
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(8, 6, 5, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 800;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-decoration: none;
-  }
-
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: var(--gradient);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: white;
-    font-weight: 800;
-  }
-
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-  }
-
-  .page-title {
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-
-  .btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95rem;
-    font-family: inherit;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s;
-  }
-
-  .btn-primary {
-    background: var(--gradient);
-    color: white;
-    box-shadow: 0 4px 16px rgba(255, 61, 0, 0.25);
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(255, 61, 0, 0.4);
-  }
-
-  .btn-secondary {
-    background: var(--panel2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-
-  .btn-secondary:hover {
-    border-color: var(--fire2);
-    color: var(--fire3);
-  }
-
-  .project-card {
-    background: rgba(26, 15, 10, 0.55);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .project-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0), rgba(255, 157, 0, 0));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    transition: all 0.35s;
-  }
-
-  .project-card:hover {
-    border-color: rgba(255, 106, 0, 0.35);
-    transform: translateX(6px);
-    box-shadow: 0 12px 40px rgba(255, 61, 0, 0.1);
-  }
-
-  .project-card:hover::before {
-    background: linear-gradient(135deg, rgba(255, 61, 0, 0.5), rgba(255, 157, 0, 0.2));
-  }
-
-  .project-card h3 {
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.01em;
-  }
-
-  .project-card p {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin: 0;
-  }
-
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 50px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: var(--panel2);
-    color: var(--text2);
-    border: 1px solid var(--border);
-    margin-top: 0.5rem;
-  }
-
-  .status-badge.ready { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
-  .status-badge.processing { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
-  .status-badge.error { background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3); }
-
-  .modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-  }
-
-  .modal.active { display: flex; }
-
-  .modal-content {
-    background: rgba(26, 15, 10, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border2);
-    border-radius: 16px;
-    padding: 2.5rem;
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow);
-  }
-
-  .modal-content h2 {
-    margin-bottom: 1.5rem;
-    font-size: 1.75rem;
-    font-weight: 800;
-  }
-
-  .form-group {
-    margin-bottom: 1.25rem;
-  }
-
-  .form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: var(--text2);
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 1rem;
-    transition: all 0.3s;
-    font-family: inherit;
-  }
-
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus {
-    outline: none;
-    border-color: var(--fire2);
-    box-shadow: 0 0 0 3px rgba(255, 61, 0, 0.1);
-  }
-
-  .checkbox-group {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 1.25rem;
-  }
-
-  .checkbox-group input {
-    width: auto;
-    margin-top: 4px;
-  }
-
-  .checkbox-group label {
-    font-size: 0.85rem;
-    color: var(--muted);
-    cursor: pointer;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 5rem 2rem;
-    color: var(--muted);
-  }
-
-  .empty-state-icon {
-    font-size: 3.5rem;
-    margin-bottom: 1rem;
-    opacity: 0.7;
-  }
-
-  .empty-state h3 {
-    color: var(--text);
-    margin-bottom: 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  @media (max-width: 768px) {
-    header { padding: 1rem; }
-    .container { padding: 1rem; }
-    .page-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects — ClipForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app/app.css">
 </head>
 <body>
-<div class="app-grain" aria-hidden="true"></div>
-
-<header>
-  <a href="/" class="logo">
-    <div class="logo-icon">C</div>
-    <span>ClipForge</span>
-  </a>
-  <div style="display: flex; gap: 1rem; align-items: center;">
-    <button class="btn btn-secondary" onclick="window.location.href='/connections.html'">Connections</button>
-    <button class="btn btn-secondary" onclick="logout()">Sign Out</button>
+<div class="grain" aria-hidden="true"></div>
+<main id="page">
+  <div class="page-head">
+    <div><h1>Projects</h1><p>A project holds one source video, the clips found in it, and everything you publish from them.</p></div>
+    <div class="row"><input class="input" id="search" placeholder="Filter projects…" style="width:220px" hidden><button class="btn btn--primary" id="newBtn">New project</button></div>
   </div>
-</header>
+  <div class="grid grid--cards" id="list"><div class="empty small">Loading…</div></div>
+</main>
 
-<div class="container fade-in-up">
-  <div class="page-header">
-    <div>
-      <h1 class="page-title">Projects</h1>
-      <p style="color: var(--muted); margin-top: 0.5rem;">Manage your video projects</p>
-    </div>
-    <button class="btn btn-primary" onclick="showCreateModal()">+ New Project</button>
-  </div>
-
-  <div id="projectsList"></div>
-</div>
-
-<!-- Create Project Modal -->
-<div class="modal" id="createModal">
-  <div class="modal-content">
-    <h2>Create New Project</h2>
-    <div class="form-group">
-      <label>Project Name</label>
-      <input type="text" id="projectName" placeholder="My video project">
-    </div>
-    <div class="form-group">
-      <label>Source Type</label>
-      <select id="sourceType" onchange="toggleSourceFields()">
-        <option value="upload">Upload Video</option>
-        <option value="url">YouTube URL</option>
-      </select>
-    </div>
-    <div class="form-group" id="urlField" style="display: none;">
-      <label>Video URL</label>
-      <input type="text" id="sourceUrl" placeholder="https://youtube.com/watch?v=...">
-    </div>
-    <div class="form-group" id="uploadField">
-      <label>Video File</label>
-      <input type="file" id="sourceFile" accept="video/*">
-    </div>
-    <div class="checkbox-group">
-      <input type="checkbox" id="rightsConfirmed">
-      <label for="rightsConfirmed">I confirm I have the right to process and publish this content. I own this video or have permission/license to use it.</label>
-    </div>
-    <button class="btn btn-primary" style="width: 100%;" onclick="createProject()">Create Project</button>
-    <button class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;" onclick="closeModal()">Cancel</button>
-  </div>
-</div>
-
+<script src="/app/app.js"></script>
 <script>
-  const API = document.querySelector('meta[name="clipforge-api-base"]')?.content || '/api';
-  let token = localStorage.getItem('clipforge_token');
-  let user = JSON.parse(localStorage.getItem('clipforge_user') || 'null');
+(async () => {
+  const shell = CF.mount({ active: 'projects', title: 'Projects', actions: [{ label: 'New project', kind: 'primary', onClick: () => openCreate() }] });
+  if (!shell) return;
+  const $ = id => document.getElementById(id);
+  let projects = [];
 
-  function $(id) { return document.getElementById(id); }
-
-  function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:rgba(26,15,10,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.055);border-radius:12px;padding:1rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:4000;color:#f5ebe0;font-size:0.9rem;border-left:4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#ff6a00'};`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+  const STEP_INDEX = { created: 0, uploaded: 1, analyzing: 1, analyzed: 2, clips_ready: 2, rendering: 3, rendered: 3, published: 4 };
+  function card(p) {
+    const step = STEP_INDEX[p.status] ?? 0;
+    const steps = ['Source', 'Analysed', 'Rendered', 'Published'].map((s, i) => `<span class="step ${step > i ? 'is-done' : step === i ? 'is-now' : ''}">${s}</span>`).join('');
+    return `<a class="card" href="/project.html?id=${encodeURIComponent(p.id)}">
+      <div class="row row--between"><h3>${CF.esc(p.name)}</h3>${CF.badge(p.status)}</div>
+      <p class="small muted" style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sourceType === 'upload' ? 'Uploaded video' : CF.esc(p.sourceUrl || 'No source yet')}</p>
+      <div class="steps" style="margin-top:14px">${steps}</div>
+      <div class="meta-row small muted"><span>${p.clipsCount || 0} clips</span><span>${p.rendersCount || 0} rendered</span><span>Updated ${CF.fmt.ago(p.updatedAt)}</span></div>
+      ${p.error ? `<p class="small" style="color:var(--bad);margin-top:10px">${CF.esc(p.error)}</p>` : ''}
+    </a>`;
   }
 
-  async function api(path, opts = {}) {
-    const res = await fetch(API + path, {
-      ...opts,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: 'Bearer ' + token } : {}),
-        ...(opts.headers || {}),
-      },
-    });
-    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || 'Request failed');
-    return data;
+  function render() {
+    const q = $('search').value.trim().toLowerCase();
+    const shown = projects.filter(p => !q || p.name.toLowerCase().includes(q));
+    $('search').hidden = projects.length < 4;
+    $('list').innerHTML = projects.length ? (shown.map(card).join('') || `<div class="empty" style="grid-column:1/-1"><h3>Nothing matches “${CF.esc(q)}”</h3></div>`) :
+      `<div class="empty" style="grid-column:1/-1">${CF.ICON.projects.replace('<svg', '<svg style="width:36px;height:36px;stroke:var(--fg-3);fill:none;stroke-width:1.5;margin:0 auto 14px"')}<h3>No projects yet</h3><p>Start with a YouTube link or a video file. You’ll confirm you have the rights to it, then ClipForge takes over.</p><button class="btn btn--primary" id="emptyNew">Create your first project</button></div>`;
+    const b = $('emptyNew'); if (b) b.onclick = openCreate;
+  }
+  $('search').oninput = render;
+
+  async function load() {
+    try { projects = (await CF.api('/projects')).projects.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); render(); }
+    catch (e) { $('list').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 
-  function showCreateModal() {
-    $('createModal').classList.add('active');
+  function openCreate() {
+    let file = null;
+    const body = document.createElement('div');
+    body.innerHTML = `
+      <div class="field"><label for="cName">Project name</label><input class="input" id="cName" placeholder="Episode 12 — interview cut" maxlength="120"></div>
+      <div class="field"><label>Source</label>
+        <div class="tabs" style="margin-bottom:12px"><button type="button" class="tab is-active" data-src="url">Video link</button><button type="button" class="tab" data-src="upload">Upload a file</button></div>
+        <input class="input" id="cUrl" placeholder="https://youtube.com/watch?v=…">
+        <div class="dropzone" id="cDrop" hidden><strong>Drop a video here</strong> or click to choose<div class="small" style="margin-top:4px">MP4, MOV or WebM · up to 50 MB through the browser</div><div class="file" id="cFile"></div><input type="file" id="cInput" accept="video/*" hidden></div>
+      </div>
+      <label class="check"><input type="checkbox" id="cRights"><span>I own this video or have permission to process and publish it. ClipForge won’t work on content you don’t have rights to.</span></label>`;
+    let src = 'url';
+    body.querySelectorAll('[data-src]').forEach(t => t.onclick = () => { src = t.dataset.src; body.querySelectorAll('[data-src]').forEach(x => x.classList.toggle('is-active', x === t)); body.querySelector('#cUrl').hidden = src !== 'url'; body.querySelector('#cDrop').hidden = src !== 'upload'; });
+    const drop = body.querySelector('#cDrop'), input = body.querySelector('#cInput');
+    const pick = f => { if (!f) return; if (f.size > 50 * 1024 * 1024) return CF.toast('That file is over 50 MB. Use a video link instead.', 'error'); file = f; body.querySelector('#cFile').textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`; };
+    drop.onclick = () => input.click(); input.onchange = () => pick(input.files[0]);
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add('is-over'); }; drop.ondragleave = () => drop.classList.remove('is-over');
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove('is-over'); pick(e.dataTransfer.files[0]); };
+
+    CF.modal({ title: 'New project', body, actions: [
+      { label: 'Cancel' },
+      { label: 'Create project', kind: 'primary', onClick: async () => {
+        const name = body.querySelector('#cName').value.trim();
+        const rightsConfirmed = body.querySelector('#cRights').checked;
+        if (!name) throw new Error('Give the project a name');
+        if (!rightsConfirmed) throw new Error('Please confirm you have the rights to this video');
+        const payload = { name, sourceType: src, rightsConfirmed };
+        if (src === 'url') { payload.sourceUrl = body.querySelector('#cUrl').value.trim(); if (!payload.sourceUrl) throw new Error('Paste a video link'); }
+        else { if (!file) throw new Error('Choose a video file'); payload.fileName = file.name; payload.fileBuffer = Array.from(new Uint8Array(await file.arrayBuffer())); }
+        const { project } = await CF.api('/projects', { method: 'POST', body: JSON.stringify(payload) });
+        // The source is attached as a second step so the project exists even if the upload fails.
+        if (src === 'upload' || payload.sourceUrl) {
+          try { await CF.api(`/projects/${project.id}/source`, { method: 'POST', body: JSON.stringify({ sourceType: src, sourceUrl: payload.sourceUrl, fileName: payload.fileName, fileBuffer: payload.fileBuffer, rightsConfirmed }) }); }
+          catch (e) { CF.toast('Project created, but the source could not be attached: ' + e.message, 'error'); }
+        }
+        CF.toast('Project created', 'success');
+        location.href = '/project.html?id=' + encodeURIComponent(project.id);
+      } },
+    ] });
   }
-
-  function closeModal() {
-    $('createModal').classList.remove('active');
-  }
-
-  function toggleSourceFields() {
-    const type = $('sourceType').value;
-    $('urlField').style.display = type === 'url' ? 'block' : 'none';
-    $('uploadField').style.display = type === 'upload' ? 'block' : 'none';
-  }
-
-  async function createProject() {
-    const name = $('projectName').value.trim();
-    const sourceType = $('sourceType').value;
-    const sourceUrl = $('sourceUrl').value.trim();
-    const rightsConfirmed = $('rightsConfirmed').checked;
-
-    if (!name) return showToast('Please enter a project name', 'error');
-    if (!rightsConfirmed) return showToast('Please confirm rights to process this content', 'error');
-
-    try {
-      const body = { name, sourceType, rightsConfirmed };
-      if (sourceType === 'url') body.sourceUrl = sourceUrl;
-      if (sourceType === 'upload') {
-        const file = $('sourceFile').files[0];
-        if (!file) return showToast('Please select a video file', 'error');
-        const buffer = await file.arrayBuffer();
-        body.fileName = file.name;
-        body.fileBuffer = Array.from(new Uint8Array(buffer));
-      }
-
-      const data = await api('/projects', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-
-      showToast('Project created!', 'success');
-      closeModal();
-      loadProjects();
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
-  }
-
-  async function loadProjects() {
-    try {
-      const data = await api('/projects');
-      const container = $('projectsList');
-      
-      if (data.projects.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">📁</div>
-            <h3>No projects yet</h3>
-            <p>Create your first project to start creating shorts</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = data.projects.map(p => `
-        <div class="project-card" onclick="window.location.href='/project.html?id=${p.id}'">
-          <h3>${escapeHtml(p.name)}</h3>
-          <p>${p.sourceType === 'upload' ? 'Uploaded video' : p.sourceUrl || 'No source'}</p>
-          <span class="status-badge ${p.status}">${p.status}</span>
-        </div>
-      `).join('');
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  function logout() {
-    token = null;
-    user = null;
-    localStorage.removeItem('clipforge_token');
-    localStorage.removeItem('clipforge_user');
-    window.location.href = '/';
-  }
-
-  // Init
-  if (!token) {
-    window.location.href = '/';
-  }
-  loadProjects();
+  $('newBtn').onclick = openCreate;
+  load();
+})();
 </script>
 </body>
 </html>

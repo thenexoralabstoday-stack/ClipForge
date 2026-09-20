@@ -6,6 +6,36 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { run, findCommand, ensureDir, log, readJson } from './util.js';
 
+/**
+ * yt-dlp failures are long and technical. Translate the ones users actually hit
+ * into something they can act on; the raw output still goes to the job log.
+ */
+export function explainDownloadFailure(raw) {
+  const m = s => new RegExp(s, 'i').test(raw || '');
+  if (m("sign in to confirm|not a bot")) {
+    return 'YouTube refused this download, asking the server to prove it is not a bot. '
+      + 'It blocks downloads from data-centre servers like this one. '
+      + 'Download the video yourself and upload the file instead.';
+  }
+  if (m('no supported javascript runtime')) {
+    return 'The downloader is missing its JavaScript runtime on the server. That is a deployment problem, not something you did.';
+  }
+  if (m('private video|members-only|join this channel')) {
+    return 'That video is private or members-only, so it cannot be downloaded. Upload the file instead.';
+  }
+  if (m('video unavailable|removed by the uploader|not available in your country|age-restricted|inappropriate for some users')) {
+    return 'That video is unavailable to the server — it may be removed, region-locked or age-restricted. Upload the file instead.';
+  }
+  if (m('http error 429|too many requests')) {
+    return 'YouTube is rate-limiting the server. Wait a few minutes, or upload the file instead.';
+  }
+  if (m('unsupported url|is not a valid url')) {
+    return 'That link is not one the downloader recognises. Paste a direct video link, or upload the file.';
+  }
+  const first = (String(raw).split(/\r?\n/).find(l => /^ERROR:/i.test(l)) || '').replace(/^ERROR:\s*/i, '').trim();
+  return first ? `Download failed: ${first}` : 'Download failed. Try uploading the video file instead.';
+}
+
 export async function fetchSource(input, workDir) {
   ensureDir(workDir);
   if (fs.existsSync(input)) {
@@ -19,7 +49,11 @@ export async function fetchSource(input, workDir) {
     ? ['-m', 'yt_dlp', '-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b', '--merge-output-format', 'mp4', '--write-info-json', '--write-auto-subs', '--write-subs', '--sub-langs', 'en.*,en', '--sub-format', 'json3', '--no-playlist', '-o', path.join(workDir, 'source.%(ext)s'), input]
     : ['-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b', '--merge-output-format', 'mp4', '--write-info-json', '--write-auto-subs', '--write-subs', '--sub-langs', 'en.*,en', '--sub-format', 'json3', '--no-playlist', '-o', path.join(workDir, 'source.%(ext)s'), input];
   log('downloading', input);
-  await run(ytdlp, ytArgs);
+  try {
+    await run(ytdlp, ytArgs);
+  } catch (e) {
+    throw new Error(explainDownloadFailure(e && e.message));
+  }
   const file = fs.readdirSync(workDir).map(f => path.join(workDir, f)).find(f => /source\.(mp4|mkv|webm)$/.test(f));
   if (!file) throw new Error('Download produced no video file');
   const infoFile = path.join(workDir, 'source.info.json');

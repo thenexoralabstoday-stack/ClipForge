@@ -14,8 +14,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 \
       python3-pip \
       curl \
+      unzip \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# yt-dlp's YouTube extractor now needs a JavaScript runtime; without one it warns
+# and returns incomplete formats. Deno is the runtime yt-dlp enables by default.
+RUN ARCH="$(dpkg --print-architecture)" \
+ && case "$ARCH" in \
+      amd64) DENO_ARCH=x86_64-unknown-linux-gnu ;; \
+      arm64) DENO_ARCH=aarch64-unknown-linux-gnu ;; \
+      *) echo "unsupported architecture: $ARCH" && exit 1 ;; \
+    esac \
+ && curl -fsSL "https://github.com/denoland/deno/releases/latest/download/deno-${DENO_ARCH}.zip" -o /tmp/deno.zip \
+ && unzip -q /tmp/deno.zip -d /usr/local/bin \
+ && rm /tmp/deno.zip \
+ && chmod +x /usr/local/bin/deno
 
 # Debian 12 marks the system Python as externally managed (PEP 668); this image
 # is single-purpose, so installing into it directly is fine.
@@ -42,7 +56,8 @@ EXPOSE 10000
 # Fail fast and loudly if a required binary is missing, rather than halfway
 # through a customer's job.
 RUN ffmpeg -version > /dev/null && ffprobe -version > /dev/null \
- && yt-dlp --version > /dev/null && python3 -c "import faster_whisper" \
- && echo "ffmpeg, ffprobe, yt-dlp and faster-whisper all present"
+ && yt-dlp --version > /dev/null && deno --version > /dev/null \
+ && python3 -c "import faster_whisper" \
+ && echo "ffmpeg, ffprobe, yt-dlp, deno and faster-whisper all present"
 
 CMD ["node", "src/cli.js", "ui"]

@@ -121,12 +121,14 @@ app.use('/app', express.static(path.join(__dirname, 'app'), { maxAge: '1h' }));
 app.use('/landing', express.static(path.join(__dirname, 'landing')));
 
 // Only the page files are served from the repo root. Everything else (server.js, src/, data/, .env) stays private.
-const PAGES = ['index', 'home', 'projects', 'project', 'editor', 'publish', 'billing', 'settings', 'meme-sounds', 'connections'];
+const PAGES = ['index', 'home', 'projects', 'project', 'editor', 'publish', 'billing', 'settings', 'meme-sounds', 'connections', 'privacy', 'terms'];
 const page = name => (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, name + '.html'));
 app.get('/', page('index'));
 for (const name of PAGES) app.get(`/${name}.html`, page(name));
 app.get('/settings', page('settings'));
 app.get('/home', page('home'));
+app.get('/privacy', page('privacy'));
+app.get('/terms', page('terms'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

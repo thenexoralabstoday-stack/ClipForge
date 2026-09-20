@@ -1,0 +1,89 @@
+<!-- Copyright (c) 2026 Nexora Labs. All rights reserved. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — ClipForge</title>
+<meta name="description" content="What ClipForge collects, what it sends to other services, and how to disconnect your accounts.">
+<link rel="icon" href="/app/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app/app.css">
+<link rel="stylesheet" href="/app/legal.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="doc-top">
+  <a class="doc-brand" href="/"><img src="/app/clipforge-mark-96.webp" width="96" height="96" alt=""><span>ClipForge</span></a>
+  <a class="btn btn--sm" href="/">Back to ClipForge</a>
+</header>
+
+<main class="doc">
+  <h1>Privacy Policy</h1>
+  <p class="updated meta">Last updated 20 September 2026</p>
+
+  <p>ClipForge is a product of <strong>Nexora Labs</strong>. It turns a long video into short vertical clips: it transcribes the video, picks the moments most likely to hold attention, burns in captions, renders the clips, and — if you ask it to — publishes them to accounts you have connected.</p>
+  <p>This policy explains exactly what that involves for your data. If anything here is unclear, email <a href="mailto:thenexoralabstoday@gmail.com">thenexoralabstoday@gmail.com</a>.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><strong>Your account.</strong> Your name, email address, and a hashed version of your password. We never store the password itself.</li>
+    <li><strong>Your videos.</strong> Files you upload, and files downloaded from links you paste. These are stored on our server so they can be processed.</li>
+    <li><strong>What we derive from them.</strong> Transcripts, clip timings, titles, hooks, hashtags, scores, and the rendered clips.</li>
+    <li><strong>Usage.</strong> Minutes processed and clips created, so we can apply your plan's limits.</li>
+    <li><strong>Connection tokens.</strong> If you connect YouTube, TikTok or Instagram, we store the access token that lets ClipForge upload on your behalf.</li>
+    <li><strong>Payments.</strong> Handled entirely by Stripe. We never see or store your card number.</li>
+  </ul>
+
+  <h2>What leaves our server, and what doesn't</h2>
+  <p>We think this is the part worth being precise about.</p>
+  <ul>
+    <li><strong>Your video file is never sent to an AI provider.</strong> Transcription runs on our own server using faster-whisper, or uses the captions the video already has.</li>
+    <li><strong>The transcript text is sent to an AI provider</strong> — Anthropic, Groq or Google Gemini, depending on how the service is configured — so it can choose and score the best moments. It is sent as text only, with timings. It is not used to train anyone's models under the API terms we operate under.</li>
+    <li><strong>When you publish</strong>, the rendered clip and the title, description and hashtags you approved are sent to the platform you chose, using the token you connected. Nothing is published without you asking for it.</li>
+  </ul>
+
+  <h2>YouTube</h2>
+  <p>ClipForge uses YouTube API Services.</p>
+  <div class="note">
+    <p>We request a single permission: <strong>upload videos to your channel</strong> (<code>youtube.upload</code>). We do not read your videos, comments, subscribers, watch history or analytics, and we cannot delete or edit anything already on your channel.</p>
+  </div>
+  <p>By connecting a YouTube account you also agree to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube Terms of Service</a>. Google's handling of your data is covered by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</p>
+  <p>You can revoke ClipForge's access at any time, in two places: inside ClipForge under <strong>Settings → Connections → Disconnect</strong>, or from Google directly at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>. Disconnecting deletes the stored token immediately.</p>
+
+  <h2>TikTok and Instagram</h2>
+  <p>The same pattern applies. We request only the permission needed to publish a video, we store only the token, and disconnecting from Settings deletes it.</p>
+
+  <h2>Who else is involved</h2>
+  <p>Only the services that make ClipForge work: <strong>Render</strong> (hosting), <strong>Stripe</strong> (payments), our <strong>AI provider</strong> (transcript text, as described above), and the platforms you choose to publish to. We do not sell your personal data, and we do not use it for advertising.</p>
+
+  <h2>How long we keep things</h2>
+  <ul>
+    <li>Source videos and rendered clips stay until you delete the project, or until you delete your account.</li>
+    <li>Connection tokens stay until you disconnect that platform.</li>
+    <li>Account details stay until you ask us to delete the account.</li>
+    <li>Payment records are kept by Stripe as long as the law requires.</li>
+  </ul>
+
+  <h2>Security</h2>
+  <p>Passwords are hashed with scrypt and a per-account salt. Connection tokens are stored server-side and never sent to your browser. Traffic is served over HTTPS.</p>
+
+  <h2>Your choices</h2>
+  <p>Email us and we will send you a copy of what we hold about you, or delete your account and everything attached to it. We will respond within 30 days.</p>
+
+  <h2>Children</h2>
+  <p>ClipForge is not intended for anyone under 13, and we do not knowingly collect their data.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes in a way that matters, we will update the date above and tell active subscribers by email.</p>
+</main>
+
+<footer class="doc-foot">
+  <span>© 2026 Nexora Labs</span>
+  <span><a href="/terms.html">Terms of Service</a> · <a href="mailto:thenexoralabstoday@gmail.com">thenexoralabstoday@gmail.com</a></span>
+</footer>
+</body>
+</html>

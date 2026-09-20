@@ -30,7 +30,7 @@ JWT_SECRET=your_jwt_secret_here_change_in_production
   - Use a long random string.
   - This signs user auth tokens.
 
-BASE_URL=https://your-app.onrender.com
+BASE_URL=https://clipforge.best
   - REQUIRED for production.
   - This is your public backend URL.
   - Used for Stripe callbacks and OAuth redirects.
@@ -49,7 +49,7 @@ SOCIAL OAUTH - YOUTUBE
 
 YOUTUBE_CLIENT_ID=your_youtube_client_id
 YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
-YOUTUBE_REDIRECT_URI=https://your-app.onrender.com/auth/youtube/callback
+YOUTUBE_REDIRECT_URI=https://clipforge.best/auth/youtube/callback
   - REQUIRED for YouTube publishing.
   - Create OAuth 2.0 credentials in Google Cloud Console.
   - Add the REDIRECT_URI to your Google Cloud OAuth consent screen.
@@ -64,7 +64,7 @@ SOCIAL OAUTH - TIKTOK
 
 TIKTOK_CLIENT_KEY=your_tiktok_client_key
 TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
-TIKTOK_REDIRECT_URI=https://your-app.onrender.com/auth/tiktok/callback
+TIKTOK_REDIRECT_URI=https://clipforge.best/auth/tiktok/callback
   - REQUIRED for TikTok publishing.
   - Create an app at https://developers.tiktok.com/
   - Add the REDIRECT_URI to your TikTok app settings.
@@ -79,7 +79,7 @@ SOCIAL OAUTH - INSTAGRAM
 
 INSTAGRAM_APP_ID=your_instagram_app_id
 INSTAGRAM_APP_SECRET=your_instagram_app_secret
-INSTAGRAM_REDIRECT_URI=https://your-app.onrender.com/auth/instagram/callback
+INSTAGRAM_REDIRECT_URI=https://clipforge.best/auth/instagram/callback
   - REQUIRED for Instagram Reels publishing.
   - Create a Meta app at https://developers.facebook.com/
   - Add Instagram Basic Display and Content Publishing products.

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Nexora Labs. All rights reserved.
 // Contact: thenexoralabstoday@gmail.com
 
-// Download a source video with yt-dlp (or accept a local file). Also grabs YouTube's auto-captions as a transcription fallback.
+// Download a source video with yt-dlp (or accept a local file). Also grabs auto-captions as a transcription fallback.
 import fs from 'node:fs';
 import path from 'node:path';
 import { run, findCommand, ensureDir, log, readJson } from './util.js';
@@ -13,8 +13,7 @@ import { run, findCommand, ensureDir, log, readJson } from './util.js';
 export function explainDownloadFailure(raw) {
   const m = s => new RegExp(s, 'i').test(raw || '');
   if (m("sign in to confirm|not a bot")) {
-    return 'YouTube refused this download, asking the server to prove it is not a bot. '
-      + 'It blocks downloads from data-centre servers like this one. '
+    return 'This site requires sign-in or blocked the downloader. '
       + 'Download the video yourself and upload the file instead.';
   }
   if (m('no supported javascript runtime')) {

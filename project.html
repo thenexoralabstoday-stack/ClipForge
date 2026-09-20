@@ -119,7 +119,7 @@
     const body = document.createElement('div');
     body.innerHTML = `
       <div class="tabs" style="margin-bottom:12px"><button type="button" class="tab" data-src="url">Video link</button><button type="button" class="tab" data-src="upload">Upload a file</button></div>
-      <input class="input" id="aUrl" placeholder="https://youtube.com/watch?v=…" value="${CF.esc(project.sourceUrl || '')}">
+      <input class="input" id="aUrl" placeholder="Paste a link from YouTube, TikTok, Instagram, VK, Google Drive, or a direct video URL" value="${CF.esc(project.sourceUrl || '')}">
       <div class="dropzone" id="aDrop" hidden><strong>Drop a video here</strong> or click to choose<div class="file" id="aFile"></div><input type="file" id="aInput" accept="video/*" hidden></div>
       <label class="check" style="margin-top:14px"><input type="checkbox" id="aRights"><span>I own this video or have permission to process and publish it.</span></label>`;
     const sync = () => { body.querySelectorAll('[data-src]').forEach(x => x.classList.toggle('is-active', x.dataset.src === src)); body.querySelector('#aUrl').hidden = src !== 'url'; body.querySelector('#aDrop').hidden = src !== 'upload'; };

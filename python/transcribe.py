@@ -3,6 +3,16 @@ import json
 import subprocess
 import os
 
+hf_token = os.environ.get('HF_TOKEN')
+if hf_token:
+    os.environ['HUGGING_FACE_HUB_TOKEN'] = hf_token
+    os.environ['HF_TOKEN'] = hf_token
+    try:
+        from huggingface_hub import login
+        login(token=hf_token, add_to_git_credential=False)
+    except Exception:
+        pass
+
 try:
     from faster_whisper import WhisperModel
     HAS_FASTER_WHISPER = True

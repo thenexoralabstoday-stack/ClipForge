@@ -6,11 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-export function run(cmd, args, { cwd, quiet = false, input } = {}) {
+export function run(cmd, args, { cwd, quiet = false, input, env } = {}) {
   return new Promise((resolve, reject) => {
     const useShell = process.platform === 'win32' && !path.isAbsolute(cmd);
     const safeArgs = useShell ? args.map(a => /[\s\\"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a) : args;
-    const p = spawn(cmd, safeArgs, { cwd, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], shell: useShell });
+    const p = spawn(cmd, safeArgs, { cwd, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], shell: useShell, env: env ? { ...process.env, ...env } : process.env });
     let out = '', err = '';
     p.stdout.on('data', d => { out += d; if (!quiet) process.stdout.write(d); });
     p.stderr.on('data', d => { err += d; if (!quiet) process.stderr.write(d); });

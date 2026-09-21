@@ -20,6 +20,8 @@ services:
       # 'base' is the largest that fits comfortably; raise it with the plan.
       - key: WHISPER_MODEL
         value: base
+      - key: HF_TOKEN
+        sync: false
       - key: BASE_URL
         value: https://clipforge.best
       - key: YOUTUBE_REDIRECT_URI

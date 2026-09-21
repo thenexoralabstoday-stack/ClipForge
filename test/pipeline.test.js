@@ -10,7 +10,9 @@ const FIXTURES = path.join(ROOT, 'test', 'fixtures');
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { stdio: 'pipe', shell: process.platform === 'win32' });
+    const useShell = process.platform === 'win32';
+    const safeArgs = useShell ? args.map(a => /[\s\\"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a) : args;
+    const p = spawn(cmd, safeArgs, { stdio: 'pipe', shell: useShell });
     let out = '', err = '';
     p.stdout.on('data', d => { out += d; if (!opts.quiet) process.stdout.write(d); });
     p.stderr.on('data', d => { err += d; if (!opts.quiet) process.stderr.write(d); });

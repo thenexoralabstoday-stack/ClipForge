@@ -66,13 +66,12 @@ export async function downloadFromUrl(url, destPath) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   
   try {
-    await run('curl', ['-L', '-o', destPath, url], { quiet: true, timeout: 60000 });
-  } catch {
-    const { default: fetch } = await import('node-fetch');
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(destPath, buffer);
+  } catch (e) {
+    throw new Error(`Download failed: ${e.message}`);
   }
   
   return destPath;

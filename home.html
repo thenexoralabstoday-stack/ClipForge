@@ -39,11 +39,12 @@
     <section class="panel">
       <div class="panel__head"><div><h2>Quick forge</h2><p>One video in, a set of clips out. Uses your defaults from Settings.</p></div></div>
       <div class="panel__body">
-        <div class="field">
-          <label for="qInput">Video</label>
-          <input class="input" id="qInput" placeholder="https://youtube.com/watch?v=…  or a file path when running locally" autocomplete="off">
-          <span class="help">YouTube and direct video links work everywhere. File paths only work on a machine that runs ClipForge itself.</span>
-        </div>
+      <div class="field">
+        <label for="qInput">Video</label>
+        <input class="input" id="qInput" placeholder="https://youtube.com/watch?v=…  or a file path when running locally" autocomplete="off">
+        <div class="dropzone" id="qDrop" style="margin-top:8px"><strong>Drop a video here</strong> or click to choose<div class="small" style="margin-top:4px">MP4, MOV or WebM · up to 50 MB</div><div class="file" id="qFile"></div><input type="file" id="qFileInput" accept="video/*" hidden></div>
+        <span class="help">YouTube and direct video links work everywhere. File paths and uploads work when running ClipForge locally.</span>
+      </div>
         <div class="fields">
           <div class="field"><label for="qClips">Clips</label><input class="input" id="qClips" type="number" min="1" max="20" value="5"></div>
           <div class="field"><label for="qMin">Min seconds</label><input class="input" id="qMin" type="number" min="5" value="20"></div>
@@ -138,6 +139,13 @@
   const append = (line, cls) => { const s = document.createElement('span'); if (cls) s.className = cls; s.textContent = line + '\n'; log.append(s); log.scrollTop = log.scrollHeight; };
   const setState = (s, kind) => { const b = $('jobState'); b.textContent = s; b.className = 'badge badge--' + kind + (kind === 'warn' ? ' badge--pulse' : ''); };
 
+  let quickFile = null;
+  const qDrop = $('qDrop'), qFileInput = $('qFileInput'), qFile = $('qFile');
+  const pickQFile = f => { if (!f) return; if (f.size > 50 * 1024 * 1024) return CF.toast('That file is over 50 MB. Use a video link instead.', 'error'); quickFile = f; qFile.textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`; };
+  qDrop.onclick = () => qFileInput.click(); qFileInput.onchange = () => pickQFile(qFileInput.files[0]);
+  qDrop.ondragover = e => { e.preventDefault(); qDrop.classList.add('is-over'); }; qDrop.ondragleave = () => qDrop.classList.remove('is-over');
+  qDrop.ondrop = e => { e.preventDefault(); qDrop.classList.remove('is-over'); pickQFile(e.dataTransfer.files[0]); };
+
   function renderResults(clips, jobId) {
     $('results').hidden = false;
     $('resultsSub').innerHTML = `${clips.length} clip${clips.length === 1 ? '' : 's'} rendered · <a class="link" href="/meme-sounds.html?job=${encodeURIComponent(jobId)}">add meme sounds</a> · <a class="link" href="/publish.html?job=${encodeURIComponent(jobId)}">publish</a>`;
@@ -159,18 +167,15 @@
     $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  $('qStart').onclick = async () => {
-    const input = $('qInput').value.trim();
-    if (!input) return CF.toast('Paste a video link first', 'error');
+  async function startJob(input, body) {
     const btn = $('qStart');
+    CF.busy(btn, true); log.textContent = ''; setState('queued', 'warn'); $('results').hidden = true;
     try {
       const usage = await CF.api('/usage');
       if (usage.minutesLimit !== null && usage.minutesUsed >= usage.minutesLimit) {
         CF.modal({ title: 'Monthly limit reached', body: '<p>You have used all the minutes in your plan for this month. Upgrade to keep forging.</p>', actions: [{ label: 'Not now' }, { label: 'See plans', kind: 'primary', onClick: () => { location.href = '/billing.html'; } }] });
-        return;
+        CF.busy(btn, false); return;
       }
-      CF.busy(btn, true); log.textContent = ''; setState('queued', 'warn'); $('results').hidden = true;
-      const body = { input, clips: $('qClips').value, min: $('qMin').value, max: $('qMax').value, style: $('qStyle').value, reframe: $('qReframe').value, provider: $('qProvider').value, model: $('qModel').value };
       const job = await CF.api('/jobs', { method: 'POST', body: JSON.stringify(body) });
       append('job ' + job.id + ' started');
       setState('running', 'warn');
@@ -183,6 +188,21 @@
       };
       evt.onerror = () => { evt.close(); CF.busy(btn, false); setState('disconnected', 'bad'); append('lost connection to the job stream', 'bad'); };
     } catch (e) { CF.busy(btn, false); setState('failed', 'bad'); CF.toast(e.message, 'error'); }
+  }
+
+  $('qStart').onclick = async () => {
+    const input = $('qInput').value.trim();
+    if (!input && !quickFile) return CF.toast('Paste a video link or choose a file first', 'error');
+    const body = { clips: $('qClips').value, min: $('qMin').value, max: $('qMax').value, style: $('qStyle').value, reframe: $('qReframe').value, provider: $('qProvider').value, model: $('qModel').value };
+    if (quickFile) {
+      body.input = quickFile.name;
+      body.fileBuffer = Array.from(new Uint8Array(await quickFile.arrayBuffer()));
+      body.fileName = quickFile.name;
+      body.sourceType = 'upload';
+    } else {
+      body.input = input;
+    }
+    await startJob(input, body);
   };
 
   loadUsage(); loadRecent(); loadDefaults();

@@ -227,7 +227,7 @@ export async function renderOnly(workDir, clipIndex = null) {
   if (!clipIndex) assertStep(workDir, 'render');
 }
 
-function getWorkDir(input, out, resume = false) {
+export function getWorkDir(input, out, resume = false) {
   const base = path.resolve(out);
   const name = input.startsWith('http') ? 'video' : slug(path.basename(input, path.extname(input)));
   const dir = path.join(base, name);

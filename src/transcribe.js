@@ -17,18 +17,17 @@ export async function transcribeSource(audioOrVideo, opts = {}) {
 
   let data = null;
   let source = 'none';
-  const venvPython = 'G:\\ClipForge-venv\\Scripts\\python.exe';
   const py = process.platform === 'win32' ? 'python' : 'python3';
   const hfToken = process.env.HF_TOKEN;
   const transcribeEnv = hfToken ? { HF_TOKEN: hfToken } : undefined;
-  const pythonCmd = fs.existsSync(venvPython) ? venvPython : py;
-  if (await has(pythonCmd)) {
+  if (await has(py)) {
     try {
-      const { out } = await run(pythonCmd, [path.join('python', 'transcribe.py'), audioOrVideo, '--model', model, '--language', language], { quiet: false, env: transcribeEnv });
+      const { out } = await run(py, [path.join('python', 'transcribe.py'), audioOrVideo, '--model', model, '--language', language], { quiet: false, env: transcribeEnv });
       const parsed = JSON.parse(out);
       if (parsed.segments && parsed.segments.length > 0) {
         const lastEnd = parsed.segments[parsed.segments.length - 1].end || 0;
-        const meta = readJson(path.join(workDir, 'source.info.json')).catch(() => ({})) || {};
+        let meta = {};
+        try { meta = readJson(path.join(workDir, 'source.info.json')); } catch {}
         const duration = meta.duration || 0;
         if (duration > 30 && lastEnd < 10) {
           log(`faster-whisper transcript suspiciously short (${lastEnd.toFixed(1)}s for ${duration}s video), will try captions fallback`);

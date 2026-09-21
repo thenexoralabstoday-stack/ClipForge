@@ -8,7 +8,7 @@ import { run } from './util.js';
 // ─── YouTube OAuth Upload ───────────────────────────────────────────────────
 
 export async function uploadToYouTube(clipPath, title, description, tags, opts = {}) {
-  const token = opts.token || process.env.YOUTUBE_TOKEN;
+  const token = opts.token || opts.accessToken || process.env.YOUTUBE_TOKEN;
   if (!token) {
     throw new Error('YouTube OAuth access token required. Set YOUTUBE_TOKEN or pass token option.');
   }
@@ -69,7 +69,8 @@ export function getYouTubeAuthUrl(state = 'clipforge') {
   if (!clientId) {
     throw new Error('YouTube OAuth client ID required. Set YOUTUBE_CLIENT_ID.');
   }
-  const redirectUri = encodeURIComponent(process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:5173/auth/youtube/callback');
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = encodeURIComponent(process.env.YOUTUBE_REDIRECT_URI || `${baseUrl}/auth/youtube/callback`);
   const scope = encodeURIComponent('https://www.googleapis.com/auth/youtube.upload');
   return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
 }
@@ -77,7 +78,8 @@ export function getYouTubeAuthUrl(state = 'clipforge') {
 export async function exchangeYouTubeCode(code) {
   const clientId = process.env.YOUTUBE_CLIENT_ID;
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
-  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:5173/auth/youtube/callback';
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || `${baseUrl}/auth/youtube/callback`;
   
   if (!clientId || !clientSecret) {
     throw new Error('YouTube OAuth client credentials required.');
@@ -173,14 +175,16 @@ export function getTikTokAuthUrl(state = 'clipforge') {
   if (!clientKey) {
     throw new Error('TikTok client key required. Set TIKTOK_CLIENT_KEY.');
   }
-  const redirectUri = encodeURIComponent(process.env.TIKTOK_REDIRECT_URI || 'http://localhost:5173/auth/tiktok/callback');
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = encodeURIComponent(process.env.TIKTOK_REDIRECT_URI || `${baseUrl}/auth/tiktok/callback`);
   return `https://www.tiktok.com/v2/auth/authorize?client_key=${clientKey}&redirect_uri=${redirectUri}&response_type=code&scope=video.publish,video.upload&state=${state}`;
 }
 
 export async function exchangeTikTokCode(code) {
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
-  const redirectUri = process.env.TIKTOK_REDIRECT_URI || 'http://localhost:5173/auth/tiktok/callback';
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = process.env.TIKTOK_REDIRECT_URI || `${baseUrl}/auth/tiktok/callback`;
   
   if (!clientKey || !clientSecret) {
     throw new Error('TikTok OAuth credentials required.');
@@ -254,14 +258,16 @@ export function getInstagramAuthUrl(state = 'clipforge') {
   if (!appId) {
     throw new Error('Instagram App ID required. Set INSTAGRAM_APP_ID.');
   }
-  const redirectUri = encodeURIComponent(process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:5173/auth/instagram/callback');
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = encodeURIComponent(process.env.INSTAGRAM_REDIRECT_URI || `${baseUrl}/auth/instagram/callback`);
   return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=instagram_basic,instagram_content_publish,pages_read_engagement&state=${state}`;
 }
 
 export async function exchangeInstagramCode(code) {
   const appId = process.env.INSTAGRAM_APP_ID;
   const appSecret = process.env.INSTAGRAM_APP_SECRET;
-  const redirectUri = process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:5173/auth/instagram/callback';
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const redirectUri = process.env.INSTAGRAM_REDIRECT_URI || `${baseUrl}/auth/instagram/callback`;
   
   if (!appId || !appSecret) {
     throw new Error('Instagram OAuth credentials required.');

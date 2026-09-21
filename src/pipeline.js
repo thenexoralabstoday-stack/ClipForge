@@ -34,12 +34,13 @@ function assertStep(workDir, step) {
 
 export async function runPipeline(opts) {
   const {
-    input, clips: clipCount = 5, min = 20, max = 60, lang = 'auto',
+    input, workDir: explicitWorkDir, clips: clipCount = 5, min = 20, max = 60, lang = 'auto',
     model = 'small', style = 'classic', reframe = 'center', titleMode = 'auto',
     out = './output', dryRun = false, resume = false, pick = 'ai', removeFillers = false, provider = 'anthropic',
+    onProgress,
   } = opts;
 
-  const workDir = getWorkDir(input, out, resume);
+  const workDir = explicitWorkDir || getWorkDir(input, out, resume);
   ensureDir(workDir);
   ensureDir(path.join(workDir, 'clips'));
 
@@ -50,15 +51,17 @@ export async function runPipeline(opts) {
   const transcriptPath = path.join(workDir, 'transcript.json');
   const clipsPath = path.join(workDir, 'clips.json');
 
+  const progress = (msg) => { onProgress?.(msg); log(msg); };
+
   let meta = {};
   if (fs.existsSync(sourceInfoPath)) {
     try { meta = readJson(sourceInfoPath); } catch {}
   }
 
   if (completedStep(workDir, 'download')) {
-    log('resuming: download already done');
+    progress('resuming: download already done');
   } else {
-    log('step 1/5: download');
+    progress('step 1/5: download');
     const result = await fetchSource(input, workDir);
     if (result.meta) meta = result.meta;
     fs.writeFileSync(sourceInfoPath, JSON.stringify(meta, null, 2));
@@ -73,9 +76,9 @@ export async function runPipeline(opts) {
   }
 
   if (completedStep(workDir, 'transcribe')) {
-    log('resuming: transcribe already done');
+    progress('resuming: transcribe already done');
   } else {
-    log('step 2/5: transcribe');
+    progress('step 2/5: transcribe');
     const transcript = await transcribeSource(sourceFile, { model, language: lang, workDir, force, subsFile: meta.subsFile || undefined });
     if (!transcript.segments || transcript.segments.length === 0) {
       throw new Error('Transcript is empty. Install faster-whisper (pip install faster-whisper) or use a video with captions.');
@@ -87,10 +90,10 @@ export async function runPipeline(opts) {
   const transcript = readJson(transcriptPath);
   let clips;
   if (completedStep(workDir, 'highlights')) {
-    log('resuming: highlights already done');
+    progress('resuming: highlights already done');
     clips = readJson(clipsPath).clips;
   } else {
-    log('step 3/5: pick highlights');
+    progress('step 3/5: pick highlights');
     let highlights;
     if (fs.existsSync(clipsPath) && !force) {
       highlights = { clips: readJson(clipsPath).clips, summary: 'resumed from clips.json' };
@@ -101,7 +104,7 @@ export async function runPipeline(opts) {
       if (clipCount <= 0) {
         const rec = await recommendClipCount({ transcriptText, timedTranscript, title: meta.title || 'video', duration: meta.duration || 0, provider });
         effectiveCount = rec;
-        log(`AI recommends ${effectiveCount} clips for this video`);
+        progress(`AI recommends ${effectiveCount} clips for this video`);
       }
       highlights = await pickHighlights({
         transcriptText, timedTranscript, title: meta.title || 'video', duration: meta.duration || 0,
@@ -120,9 +123,9 @@ export async function runPipeline(opts) {
   }
 
   if (completedStep(workDir, 'captions')) {
-    log('resuming: captions already done');
+    progress('resuming: captions already done');
   } else {
-    log('step 4/5: generate captions');
+    progress('step 4/5: generate captions');
     for (let i = 0; i < clips.length; i++) {
       const clip = clips[i];
       const words = wordsForClip(clip, transcript.segments);
@@ -134,9 +137,9 @@ export async function runPipeline(opts) {
   }
 
   if (completedStep(workDir, 'render')) {
-    log('resuming: render already done');
+    progress('resuming: render already done');
   } else {
-    log('step 5/5: render clips');
+    progress('step 5/5: render clips');
     const renderPromises = [];
     for (let i = 0; i < clips.length; i++) {
       renderPromises.push(

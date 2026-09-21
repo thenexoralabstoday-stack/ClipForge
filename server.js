@@ -114,7 +114,7 @@ function bootstrapAdmin() {
 bootstrapAdmin();
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
 app.use(express.raw({ type: 'application/json' }));
 app.use('/output', express.static(path.resolve('./output')));
 app.use('/storage', express.static(path.resolve('./storage')));
@@ -464,13 +464,38 @@ app.post('/api/jobs', async (req, res) => {
     }
 
     const id = Date.now().toString(36);
-    const body = { ...DEFAULT_SETTINGS, ...(user.settings || {}), ...req.body };
+    let body = { ...DEFAULT_SETTINGS, ...(user.settings || {}), ...req.body };
+
+    if (body.sourceType === 'upload' && body.fileBuffer) {
+      ensureStorageDirs();
+      const workDir = path.resolve(`./output/${id}`);
+      if (!fs.existsSync(workDir)) fs.mkdirSync(workDir, { recursive: true });
+      const ext = body.fileName?.includes('.') ? body.fileName.slice(body.fileName.lastIndexOf('.')) : '.mp4';
+      const sourceFile = path.join(workDir, `source${ext}`);
+      fs.writeFileSync(sourceFile, Buffer.from(body.fileBuffer));
+      body.input = sourceFile;
+      body.out = workDir;
+      body.workDir = workDir;
+      delete body.fileBuffer;
+    } else if (!body.input) {
+      return res.status(400).json({ error: 'input (video URL or file) is required' });
+    }
+
     const job = { id, status: 'queued', progress: [], clips: null, error: null, userId: user.id, body };
     JOBS.set(id, job);
     persistJob(job);
     res.json({ id });
 
-    runJob(id, body).then(() => {
+    const pushProgress = (msg) => {
+      const j = JOBS.get(id);
+      if (!j) return;
+      j.progress = j.progress || [];
+      j.progress.push(msg);
+      if (j.progress.length > 500) j.progress = j.progress.slice(-500);
+      persistJob(j);
+    };
+
+    runJob(id, body, pushProgress).then(() => {
       const j = JOBS.get(id);
       if (j && j.status === 'done' && j.minutesUsed) {
         const u = getUser(user.id);
@@ -501,10 +526,15 @@ app.get('/api/jobs/:id/stream', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
   send({ type: 'start', job: job.id });
+  if (job.status === 'done' || job.status === 'error') {
+    send({ type: job.status, clips: job.clips, error: job.error });
+    res.end();
+    return;
+  }
   const interval = setInterval(() => {
     const j = JOBS.get(req.params.id);
     if (!j) { clearInterval(interval); res.end(); return; }
-    if (j.progress.length) {
+    if (j.progress?.length) {
       const last = j.progress[j.progress.length - 1];
       send({ type: 'log', message: last });
     }
@@ -1186,13 +1216,15 @@ function removeJob(id) {
   writeJobs(jobs);
 }
 
-async function runJob(id, body) {
+async function runJob(id, body, pushProgress) {
   const job = JOBS.get(id);
   try {
     job.status = 'running';
     persistJob(job);
+    pushProgress?.('starting pipeline');
     const result = await runPipeline({
       input: body.input,
+      workDir: body.workDir,
       clips: parseInt(body.clips) || 5,
       min: parseInt(body.min) || 20,
       max: parseInt(body.max) || 60,
@@ -1205,7 +1237,9 @@ async function runJob(id, body) {
       resume: body.resume || false,
       pick: body.pick || 'ai',
       provider: body.provider || 'anthropic',
+      onProgress: pushProgress,
     });
+    pushProgress?.('pipeline complete');
     const clipsJsonPath = path.join(result.workDir, 'clips.json');
     const clipsJson = JSON.parse(fs.readFileSync(clipsJsonPath, 'utf8'));
     const user = getUser(job.userId);
@@ -1221,7 +1255,9 @@ async function runJob(id, body) {
     job.minutesUsed = Math.ceil(totalDuration / 60);
     job.status = 'done';
     persistJob(job);
+    pushProgress?.('done');
   } catch (e) {
+    pushProgress?.('error: ' + e.message);
     job.status = 'error';
     job.error = e.message;
     persistJob(job);

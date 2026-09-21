@@ -17,7 +17,7 @@ export function explainDownloadFailure(raw) {
       + 'Download the video yourself and upload the file instead.';
   }
   if (m('no supported javascript runtime')) {
-    return 'The downloader is missing its JavaScript runtime on the server. That is a deployment problem, not something you did.';
+    return 'yt-dlp cannot find a JavaScript runtime. Make sure Node.js or Deno is installed and on PATH.';
   }
   if (m('private video|members-only|join this channel')) {
     return 'That video is private or members-only, so it cannot be downloaded. Upload the file instead.';
@@ -44,9 +44,30 @@ export async function fetchSource(input, workDir) {
   }
   let ytdlp = await findCommand('yt-dlp');
   if (!ytdlp) throw new Error('yt-dlp not found. Install with: pip install yt-dlp');
-  const ytArgs = ytdlp === 'python'
-    ? ['-m', 'yt_dlp', '-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b', '--merge-output-format', 'mp4', '--write-info-json', '--write-auto-subs', '--write-subs', '--sub-langs', 'en.*,en', '--sub-format', 'json3', '--no-playlist', '-o', path.join(workDir, 'source.%(ext)s'), input]
-    : ['-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b', '--merge-output-format', 'mp4', '--write-info-json', '--write-auto-subs', '--write-subs', '--sub-langs', 'en.*,en', '--sub-format', 'json3', '--no-playlist', '-o', path.join(workDir, 'source.%(ext)s'), input];
+
+  const baseArgs = [
+    '-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b',
+    '--merge-output-format', 'mp4',
+    '--write-info-json',
+    '--write-auto-subs',
+    '--write-subs',
+    '--sub-langs', 'en.*,en',
+    '--sub-format', 'json3',
+    '--no-playlist',
+    '--no-check-certificates',
+    '--force-ipv4',
+    '-o', path.join(workDir, 'source.%(ext)s'),
+    input
+  ];
+
+  let ytArgs = baseArgs;
+  if (process.platform === 'win32') {
+    const nodeCmd = await findCommand('node');
+    if (nodeCmd) {
+      ytArgs = ['--js-runtime', nodeCmd, ...baseArgs];
+    }
+  }
+
   log('downloading', input);
   try {
     await run(ytdlp, ytArgs);

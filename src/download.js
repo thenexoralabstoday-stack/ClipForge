@@ -60,6 +60,6 @@ export async function fetchSource(input, workDir) {
   const subs = fs.readdirSync(workDir).find(f => /^source\..*\.json3$/.test(f));
   const meta = { title: info.title || 'video', uploader: info.uploader, duration: info.duration, license: info.license || 'unknown', url: input, source: 'yt-dlp', subsFile: subs ? path.join(workDir, subs) : null };
   if (meta.license && !/creative commons/i.test(meta.license)) log(`license: ${meta.license}. Only clip videos you own or have permission to reuse.`);
-  if (!subs) log('warning: no captions downloaded. Install faster-whisper for local transcription.');
+  if (!subs) log('info: no embedded captions found for this source; transcription will use faster-whisper if available');
   return { file, meta };
 }

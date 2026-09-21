@@ -550,6 +550,11 @@ app.get('/api/jobs/:id/stream', (req, res) => {
       res.end();
     }
   }, 500);
+
+  let heartbeat = setInterval(() => {
+    try { res.write(':\n\n'); } catch {}
+  }, 15000);
+  res.on('close', () => { clearInterval(interval); clearInterval(heartbeat); });
 });
 
 app.get('/editor/:jobId', (req, res) => {

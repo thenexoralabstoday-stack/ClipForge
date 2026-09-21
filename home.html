@@ -187,6 +187,13 @@
       append('job ' + job.id + ' started');
       setState('running', 'warn');
       const evt = new EventSource(CF.API + '/jobs/' + job.id + '/stream');
+      let errorTimer = null;
+      const clearErrorTimer = () => { if (errorTimer) { clearTimeout(errorTimer); errorTimer = null; } };
+      const scheduleError = () => {
+        clearErrorTimer();
+        errorTimer = setTimeout(() => { if (evt.readyState !== EventSource.OPEN) { evt.close(); CF.busy(btn, false); setState('disconnected', 'bad'); append('lost connection to the job stream', 'bad'); } }, 4000);
+      };
+      evt.onopen = () => { clearErrorTimer(); };
       evt.onmessage = e => {
         const d = JSON.parse(e.data);
         if (d.type === 'log') {
@@ -201,7 +208,7 @@
         if (d.type === 'done') { evt.close(); CF.busy(btn, false); setState('done', 'ok'); $('jobProgressBar').style.width = '100%'; $('jobProgressText').textContent = 'Done'; append('done — ' + (d.clips?.length || 0) + ' clips', 'ok'); renderResults(d.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success'); }
         if (d.type === 'error') { evt.close(); CF.busy(btn, false); setState('failed', 'bad'); $('jobProgressBar').style.width = '0%'; $('jobProgressText').textContent = 'Failed'; append('error: ' + d.error, 'bad'); CF.toast(d.error, 'error'); }
       };
-      evt.onerror = () => { evt.close(); CF.busy(btn, false); setState('disconnected', 'bad'); append('lost connection to the job stream', 'bad'); };
+      evt.onerror = () => { scheduleError(); };
     } catch (e) { CF.busy(btn, false); setState('failed', 'bad'); CF.toast(e.message, 'error'); }
   }
 

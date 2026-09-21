@@ -50,11 +50,12 @@
           <div class="field"><label for="qMax">Max seconds</label><input class="input" id="qMax" type="number" min="10" value="60"></div>
         </div>
         <details>
-          <summary class="small muted" style="cursor:pointer">Captions, framing and AI provider</summary>
+          <summary class="small muted" style="cursor:pointer">Captions, framing, AI and transcription</summary>
           <div class="fields" style="margin-top:12px">
             <div class="field"><label for="qStyle">Caption style</label><select class="select" id="qStyle"><option>karaoke</option><option>classic</option><option>bold-pop</option><option>none</option></select></div>
             <div class="field"><label for="qReframe">Reframe</label><select class="select" id="qReframe"><option>center</option><option>left</option><option>right</option><option>blur</option></select></div>
             <div class="field"><label for="qProvider">Provider</label><select class="select" id="qProvider"><option>anthropic</option><option>groq</option></select></div>
+            <div class="field"><label for="qModel">Whisper model</label><select class="select" id="qModel"><option value="tiny">Tiny</option><option value="base" selected>Base</option><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></div>
           </div>
         </details>
         <div class="row">
@@ -129,7 +130,7 @@
     try {
       const s = await CF.settings.get();
       $('qClips').value = s.clips; $('qMin').value = s.min; $('qMax').value = s.max;
-      $('qStyle').value = s.style; $('qReframe').value = s.reframe; $('qProvider').value = s.provider;
+      $('qStyle').value = s.style; $('qReframe').value = s.reframe; $('qProvider').value = s.provider; $('qModel').value = s.model;
     } catch { /* keep the form's own defaults */ }
   }
 
@@ -169,7 +170,7 @@
         return;
       }
       CF.busy(btn, true); log.textContent = ''; setState('queued', 'warn'); $('results').hidden = true;
-      const body = { input, clips: $('qClips').value, min: $('qMin').value, max: $('qMax').value, style: $('qStyle').value, reframe: $('qReframe').value, provider: $('qProvider').value };
+      const body = { input, clips: $('qClips').value, min: $('qMin').value, max: $('qMax').value, style: $('qStyle').value, reframe: $('qReframe').value, provider: $('qProvider').value, model: $('qModel').value };
       const job = await CF.api('/jobs', { method: 'POST', body: JSON.stringify(body) });
       append('job ' + job.id + ' started');
       setState('running', 'warn');

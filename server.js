@@ -28,6 +28,7 @@ const stripe = STRIPE_SECRET ? new Stripe(STRIPE_SECRET) : null;
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
 const USERS_FILE = path.resolve('./data/users.json');
+const JOBS_FILE = path.resolve('./data/jobs.json');
 const JOBS = new Map();
 
 const PLANS = {
@@ -291,8 +292,8 @@ app.get('/api/auth/social', (req, res) => {
 });
 
 // Profile & settings
-const DEFAULT_SETTINGS = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic' };
-const SETTINGS_ENUM = { style: ['karaoke', 'classic', 'bold-pop', 'none'], reframe: ['center', 'left', 'right', 'blur'], provider: ['anthropic', 'groq'] };
+const DEFAULT_SETTINGS = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic', model: 'base' };
+const SETTINGS_ENUM = { style: ['karaoke', 'classic', 'bold-pop', 'none'], reframe: ['center', 'left', 'right', 'blur'], provider: ['anthropic', 'groq'], model: ['tiny', 'base', 'small', 'medium', 'large'] };
 function cleanSettings(input, base) {
   const s = { ...base };
   const num = (k, lo, hi) => { const v = Number(input[k]); if (Number.isFinite(v)) s[k] = Math.min(hi, Math.max(lo, Math.round(v))); };
@@ -463,11 +464,13 @@ app.post('/api/jobs', async (req, res) => {
     }
 
     const id = Date.now().toString(36);
-    const job = { id, status: 'queued', progress: [], clips: null, error: null, userId: user.id };
+    const body = { ...DEFAULT_SETTINGS, ...(user.settings || {}), ...req.body };
+    const job = { id, status: 'queued', progress: [], clips: null, error: null, userId: user.id, body };
     JOBS.set(id, job);
+    persistJob(job);
     res.json({ id });
 
-    runJob(id, { ...DEFAULT_SETTINGS, ...(user.settings || {}), ...req.body }).then(() => {
+    runJob(id, body).then(() => {
       const j = JOBS.get(id);
       if (j && j.status === 'done' && j.minutesUsed) {
         const u = getUser(user.id);
@@ -1160,10 +1163,34 @@ function writeClips(data) {
   fs.writeFileSync(CLIPS_FILE, JSON.stringify(data, null, 2));
 }
 
+function readJobs() {
+  ensureDataDir();
+  if (!fs.existsSync(JOBS_FILE)) return [];
+  try { return JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8')); } catch { return []; }
+}
+
+function writeJobs(jobs) {
+  ensureDataDir();
+  fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs, null, 2));
+}
+
+function persistJob(job) {
+  const jobs = readJobs();
+  const idx = jobs.findIndex(j => j.id === job.id);
+  if (idx >= 0) jobs[idx] = job; else jobs.push(job);
+  writeJobs(jobs);
+}
+
+function removeJob(id) {
+  const jobs = readJobs().filter(j => j.id !== id);
+  writeJobs(jobs);
+}
+
 async function runJob(id, body) {
   const job = JOBS.get(id);
   try {
     job.status = 'running';
+    persistJob(job);
     const result = await runPipeline({
       input: body.input,
       clips: parseInt(body.clips) || 5,
@@ -1175,7 +1202,7 @@ async function runJob(id, body) {
       model: body.model || process.env.WHISPER_MODEL || 'base',
       out: body.out || './output',
       dryRun: false,
-      resume: false,
+      resume: body.resume || false,
       pick: body.pick || 'ai',
       provider: body.provider || 'anthropic',
     });
@@ -1193,13 +1220,62 @@ async function runJob(id, body) {
     const totalDuration = clipsJson.clips.reduce((sum, c) => sum + ((c.end || 0) - (c.start || 0)), 0);
     job.minutesUsed = Math.ceil(totalDuration / 60);
     job.status = 'done';
+    persistJob(job);
   } catch (e) {
     job.status = 'error';
     job.error = e.message;
+    persistJob(job);
   }
 }
 
 export function startUi() {
+  const persisted = readJobs();
+  persisted.forEach(job => {
+    if (job.status === 'running' || job.status === 'queued') {
+      job.status = 'queued';
+    }
+    JOBS.set(job.id, job);
+  });
+
+  const interrupted = persisted.filter(j => j.status === 'running' || j.status === 'queued');
+  if (interrupted.length > 0) {
+    console.log(`resuming ${interrupted.length} interrupted job(s)`);
+    interrupted.forEach(job => {
+      const workDir = path.resolve(`./output/${job.id}`);
+      const statePath = path.join(workDir, 'job.json');
+      let canResume = false;
+      if (fs.existsSync(statePath)) {
+        try {
+          const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+          const steps = ['download', 'transcribe', 'highlights', 'captions', 'render'];
+          const lastStep = state.step;
+          const stepIdx = steps.indexOf(lastStep);
+          canResume = stepIdx >= 0 && stepIdx < steps.length - 1;
+        } catch {}
+      }
+
+      if (canResume) {
+        const body = job.body || {};
+        runJob(job.id, { ...body, resume: true }).then(() => {
+          const j = JOBS.get(job.id);
+          if (j && j.status === 'done' && j.minutesUsed) {
+            const user = getUser(j.userId);
+            if (user) {
+              updateUser(j.userId, {
+                minutesUsed: (user.minutesUsed || 0) + j.minutesUsed,
+                clipsCreated: (user.clipsCreated || 0) + (j.clipsCount || 0),
+              });
+            }
+          }
+        }).catch(() => {});
+      } else {
+        job.status = 'error';
+        job.error = 'Cannot resume: no recoverable state found';
+        persistJob(job);
+      }
+    });
+  }
+
   app.listen(PORT, () => {
     console.log(`ClipForge UI running at http://localhost:${PORT}`);
   });

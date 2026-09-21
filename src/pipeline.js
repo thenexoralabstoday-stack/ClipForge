@@ -10,6 +10,28 @@ import { pickHighlights, recommendClipCount, resolveOverlaps } from './highlight
 import { renderClip } from './render.js';
 import { buildAss, wordsForClip } from './captions.js';
 
+const JOB_STATE_FILE = 'job.json';
+
+function writeJobState(workDir, state) {
+  const p = path.join(workDir, JOB_STATE_FILE);
+  fs.writeFileSync(p, JSON.stringify({ ...state, updatedAt: Date.now() }, null, 2));
+}
+
+function readJobState(workDir) {
+  const p = path.join(workDir, JOB_STATE_FILE);
+  if (!fs.existsSync(p)) return null;
+  try { return readJson(p); } catch { return null; }
+}
+
+function completedStep(workDir, step) {
+  const state = readJobState(workDir);
+  return state?.step === step && state?.status === 'done';
+}
+
+function assertStep(workDir, step) {
+  writeJobState(workDir, { step, status: 'done' });
+}
+
 export async function runPipeline(opts) {
   const {
     input, clips: clipCount = 5, min = 20, max = 60, lang = 'auto',
@@ -23,37 +45,73 @@ export async function runPipeline(opts) {
 
   const force = !resume;
 
-  log('step 1/5: download');
-  const { file: sourceFile, meta } = await fetchSource(input, workDir);
-  fs.writeFileSync(path.join(workDir, 'source.info.json'), JSON.stringify(meta, null, 2));
+  const sourceFile = path.join(workDir, 'source.mp4');
+  const sourceInfoPath = path.join(workDir, 'source.info.json');
+  const transcriptPath = path.join(workDir, 'transcript.json');
+  const clipsPath = path.join(workDir, 'clips.json');
 
-  log('step 2/5: transcribe');
-  const transcript = await transcribeSource(sourceFile, { model, language: lang, workDir, force, subsFile: meta.subsFile || undefined });
-  if (!transcript.segments || transcript.segments.length === 0) {
-    throw new Error('Transcript is empty. Install faster-whisper (pip install faster-whisper) or use a video with captions.');
+  let meta = {};
+  if (fs.existsSync(sourceInfoPath)) {
+    try { meta = readJson(sourceInfoPath); } catch {}
   }
 
-  log('step 3/5: pick highlights');
-  const clipsPath = path.join(workDir, 'clips.json');
-  let highlights;
-  if (fs.existsSync(clipsPath) && !force) {
-    highlights = { clips: readJson(clipsPath).clips, summary: 'resumed from clips.json' };
+  if (completedStep(workDir, 'download')) {
+    log('resuming: download already done');
   } else {
-    const transcriptText = transcript.segments.map(s => s.text).join(' ');
-    const timedTranscript = transcript.segments.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join(' ');
-    let effectiveCount = clipCount;
-    if (clipCount <= 0) {
-      const rec = await recommendClipCount({ transcriptText, timedTranscript, title: meta.title || 'video', duration: meta.duration || 0, provider });
-      effectiveCount = rec;
-      log(`AI recommends ${effectiveCount} clips for this video`);
+    log('step 1/5: download');
+    const result = await fetchSource(input, workDir);
+    if (result.meta) meta = result.meta;
+    fs.writeFileSync(sourceInfoPath, JSON.stringify(meta, null, 2));
+    assertStep(workDir, 'download');
+  }
+
+  if (!fs.existsSync(sourceFile)) {
+    const files = fs.readdirSync(workDir).map(f => path.join(workDir, f)).find(f => /^source\.(mp4|mkv|webm)$/.test(f));
+    if (files) {
+      fs.copyFileSync(files, sourceFile);
     }
+  }
+
+  if (completedStep(workDir, 'transcribe')) {
+    log('resuming: transcribe already done');
+  } else {
+    log('step 2/5: transcribe');
+    const transcript = await transcribeSource(sourceFile, { model, language: lang, workDir, force, subsFile: meta.subsFile || undefined });
+    if (!transcript.segments || transcript.segments.length === 0) {
+      throw new Error('Transcript is empty. Install faster-whisper (pip install faster-whisper) or use a video with captions.');
+    }
+    fs.writeFileSync(transcriptPath, JSON.stringify(transcript, null, 2));
+    assertStep(workDir, 'transcribe');
+  }
+
+  const transcript = readJson(transcriptPath);
+  let clips;
+  if (completedStep(workDir, 'highlights')) {
+    log('resuming: highlights already done');
+    clips = readJson(clipsPath).clips;
+  } else {
+    log('step 3/5: pick highlights');
+    let highlights;
+    if (fs.existsSync(clipsPath) && !force) {
+      highlights = { clips: readJson(clipsPath).clips, summary: 'resumed from clips.json' };
+    } else {
+      const transcriptText = transcript.segments.map(s => s.text).join(' ');
+      const timedTranscript = transcript.segments.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join(' ');
+      let effectiveCount = clipCount;
+      if (clipCount <= 0) {
+        const rec = await recommendClipCount({ transcriptText, timedTranscript, title: meta.title || 'video', duration: meta.duration || 0, provider });
+        effectiveCount = rec;
+        log(`AI recommends ${effectiveCount} clips for this video`);
+      }
       highlights = await pickHighlights({
         transcriptText, timedTranscript, title: meta.title || 'video', duration: meta.duration || 0,
         clipCount: effectiveCount, minDuration: min, maxDuration: max, provider,
       });
+    }
+    clips = resolveOverlaps(highlights.clips.map(c => ({ ...c })), min);
+    writeJson(clipsPath, { clips, summary: highlights.summary });
+    assertStep(workDir, 'highlights');
   }
-  const clips = resolveOverlaps(highlights.clips.map(c => ({ ...c })), min);
-  writeJson(clipsPath, { clips, summary: highlights.summary });
 
   if (dryRun) {
     log('dry-run: chosen clips');
@@ -61,25 +119,35 @@ export async function runPipeline(opts) {
     return { workDir, clips, meta, transcript };
   }
 
-  log('step 4/5: generate captions');
-  for (let i = 0; i < clips.length; i++) {
-    const clip = clips[i];
-    const words = wordsForClip(clip, transcript.segments);
-    clip.words = words;
-    const ass = buildAss(words, transcript.segments, style, titleMode === 'none' ? '' : (clip.hook || clip.title || ''));
-    fs.writeFileSync(path.join(workDir, 'clips', `clip-${String(i + 1).padStart(2, '0')}.ass`), ass);
+  if (completedStep(workDir, 'captions')) {
+    log('resuming: captions already done');
+  } else {
+    log('step 4/5: generate captions');
+    for (let i = 0; i < clips.length; i++) {
+      const clip = clips[i];
+      const words = wordsForClip(clip, transcript.segments);
+      clip.words = words;
+      const ass = buildAss(words, transcript.segments, style, titleMode === 'none' ? '' : (clip.hook || clip.title || ''));
+      fs.writeFileSync(path.join(workDir, 'clips', `clip-${String(i + 1).padStart(2, '0')}.ass`), ass);
+    }
+    assertStep(workDir, 'captions');
   }
 
-  log('step 5/5: render clips');
-  const renderPromises = [];
-  for (let i = 0; i < clips.length; i++) {
-    renderPromises.push(
-      renderClip({ source: sourceFile, clip: clips[i], clipDir: path.join(workDir, 'clips'), index: i, total: clips.length, style, reframe })
-    );
-    if (renderPromises.length >= 2 || i === clips.length - 1) {
-      await Promise.all(renderPromises);
-      renderPromises.length = 0;
+  if (completedStep(workDir, 'render')) {
+    log('resuming: render already done');
+  } else {
+    log('step 5/5: render clips');
+    const renderPromises = [];
+    for (let i = 0; i < clips.length; i++) {
+      renderPromises.push(
+        renderClip({ source: sourceFile, clip: clips[i], clipDir: path.join(workDir, 'clips'), index: i, total: clips.length, style, reframe })
+      );
+      if (renderPromises.length >= 2 || i === clips.length - 1) {
+        await Promise.all(renderPromises);
+        renderPromises.length = 0;
+      }
     }
+    assertStep(workDir, 'render');
   }
 
   const postMd = clips.map((c, i) => {
@@ -102,10 +170,21 @@ export async function runPipeline(opts) {
 }
 
 export async function transcribeOnly(input, opts = {}) {
-  const workDir = getWorkDir(input, opts.out || './output');
+  const workDir = getWorkDir(input, opts.out || './output', opts.resume);
   ensureDir(workDir);
-  const { file } = await fetchSource(input, workDir);
-  const data = await transcribeSource(file, { model: opts.model || 'small', language: opts.lang || 'auto', workDir, force: true });
+  if (completedStep(workDir, 'download')) {
+    log('transcribeOnly: download already done');
+  } else {
+    const { file } = await fetchSource(input, workDir);
+    fs.writeFileSync(path.join(workDir, 'source.info.json'), JSON.stringify({}, null, 2));
+    assertStep(workDir, 'download');
+  }
+  const sourceFile = path.join(workDir, 'source.mp4');
+  const files = fs.readdirSync(workDir).map(f => path.join(workDir, f)).find(f => /^source\.(mp4|mkv|webm)$/.test(f));
+  if (files) fs.copyFileSync(files, sourceFile);
+  const data = await transcribeSource(sourceFile, { model: opts.model || 'small', language: opts.lang || 'auto', workDir, force: true });
+  fs.writeFileSync(path.join(workDir, 'transcript.json'), JSON.stringify(data, null, 2));
+  assertStep(workDir, 'transcribe');
   return data;
 }
 
@@ -121,6 +200,7 @@ export async function pickOnly(workDir) {
   });
   const clips = resolveOverlaps(highlights.clips);
   writeJson(path.join(workDir, 'clips.json'), { clips, summary: highlights.summary });
+  assertStep(workDir, 'highlights');
   return { ...highlights, clips };
 }
 
@@ -141,6 +221,7 @@ export async function renderOnly(workDir, clipIndex = null) {
     if (renderPromises.length >= 2) { await Promise.all(renderPromises); renderPromises.length = 0; }
   }
   if (renderPromises.length) await Promise.all(renderPromises);
+  if (!clipIndex) assertStep(workDir, 'render');
 }
 
 function getWorkDir(input, out, resume = false) {
@@ -154,4 +235,18 @@ function getWorkDir(input, out, resume = false) {
     final = `${dir}-${i++}`;
   }
   return final;
+}
+
+function lastDoneStep(workDir) {
+  const state = readJobState(workDir);
+  return state?.status === 'done' ? state.step : null;
+}
+
+async function waitForWorkDir(dir, timeout = 60000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (fs.existsSync(dir)) return dir;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  throw new Error(`Timed out waiting for output directory: ${dir}`);
 }

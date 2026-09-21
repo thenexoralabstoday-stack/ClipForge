@@ -70,6 +70,7 @@
           <div class="field"><label for="dStyle">Caption style</label><select class="select" id="dStyle"><option value="karaoke">Karaoke — word by word</option><option value="classic">Classic</option><option value="bold-pop">Bold pop</option><option value="none">No captions</option></select></div>
           <div class="field"><label for="dReframe">Reframe to 9:16</label><select class="select" id="dReframe"><option value="center">Center crop</option><option value="left">Left</option><option value="right">Right</option><option value="blur">Blurred bars</option></select></div>
           <div class="field"><label for="dProvider">AI provider</label><select class="select" id="dProvider"><option value="anthropic">Anthropic (Claude)</option><option value="groq">Groq</option></select><span class="help">Whichever key the server is configured with.</span></div>
+          <div class="field"><label for="dModel">Whisper model</label><select class="select" id="dModel"><option value="tiny">Tiny — fastest</option><option value="base">Base — fast</option><option value="small">Small</option><option value="medium">Medium — accurate</option><option value="large">Large — best accuracy</option></select><span class="help">Larger models are slower but more accurate. On NVIDIA with CUDA, even Large is fast.</span></div>
         </div>
       </div>
       <div class="panel__foot"><button class="btn btn--ghost" id="dReset">Reset to defaults</button><button class="btn btn--primary" id="dSave">Save defaults</button></div>
@@ -189,9 +190,9 @@
   loadConnections();
 
   /* defaults */
-  const FALLBACK = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic' };
-  const fill = s => { $('dClips').value = s.clips; $('dMin').value = s.min; $('dMax').value = s.max; $('dStyle').value = s.style; $('dReframe').value = s.reframe; $('dProvider').value = s.provider; };
-  const read = () => ({ clips: +$('dClips').value, min: +$('dMin').value, max: +$('dMax').value, style: $('dStyle').value, reframe: $('dReframe').value, provider: $('dProvider').value });
+  const FALLBACK = { clips: 5, min: 20, max: 60, style: 'karaoke', reframe: 'center', provider: 'anthropic', model: 'base' };
+  const fill = s => { $('dClips').value = s.clips; $('dMin').value = s.min; $('dMax').value = s.max; $('dStyle').value = s.style; $('dReframe').value = s.reframe; $('dProvider').value = s.provider; $('dModel').value = s.model; };
+  const read = () => ({ clips: +$('dClips').value, min: +$('dMin').value, max: +$('dMax').value, style: $('dStyle').value, reframe: $('dReframe').value, provider: $('dProvider').value, model: $('dModel').value });
   try { fill(await CF.settings.get()); } catch { fill(FALLBACK); }
   $('dReset').onclick = () => fill(FALLBACK);
   $('dSave').onclick = async () => {

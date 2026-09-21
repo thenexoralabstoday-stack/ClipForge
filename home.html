@@ -177,6 +177,7 @@
     $('jobProgress').hidden = false;
     $('jobProgressBar').style.width = '0%';
     $('jobProgressText').textContent = 'Starting…';
+    let pollHandle = null;
     try {
       const usage = await CF.api('/usage');
       if (usage.minutesLimit !== null && usage.minutesUsed >= usage.minutesLimit) {
@@ -186,29 +187,35 @@
       const job = await CF.api('/jobs', { method: 'POST', body: JSON.stringify(body) });
       append('job ' + job.id + ' started');
       setState('running', 'warn');
-      const evt = new EventSource(CF.API + '/jobs/' + job.id + '/stream');
-      let errorTimer = null;
-      const clearErrorTimer = () => { if (errorTimer) { clearTimeout(errorTimer); errorTimer = null; } };
-      const scheduleError = () => {
-        clearErrorTimer();
-        errorTimer = setTimeout(() => { if (evt.readyState !== EventSource.OPEN) { evt.close(); CF.busy(btn, false); setState('disconnected', 'bad'); append('lost connection to the job stream', 'bad'); } }, 4000);
-      };
-      evt.onopen = () => { clearErrorTimer(); };
-      evt.onmessage = e => {
-        const d = JSON.parse(e.data);
-        if (d.type === 'log') {
-          append(d.message);
-          const m = d.message.match(/step\s+(\d)\/5/);
-          if (m) {
-            const pct = [0, 10, 30, 50, 70, 90][Number(m[1])] || 0;
-            $('jobProgressBar').style.width = pct + '%';
-            $('jobProgressText').textContent = d.message;
+      let lastSeen = 0;
+      const stop = () => { if (pollHandle) { clearInterval(pollHandle); pollHandle = null; } };
+      pollHandle = setInterval(async () => {
+        try {
+          const j = await CF.api('/jobs/' + job.id);
+          if (!j) return;
+          if (j.progress?.length) {
+            for (let i = lastSeen; i < j.progress.length; i++) {
+              append(j.progress[i]);
+              const m = j.progress[i].match(/step\s+(\d)\/5/);
+              if (m) {
+                const pct = [0, 10, 30, 50, 70, 90][Number(m[1])] || 0;
+                $('jobProgressBar').style.width = pct + '%';
+                $('jobProgressText').textContent = j.progress[i];
+              }
+            }
+            lastSeen = j.progress.length;
           }
+          if (j.status === 'done') {
+            stop(); CF.busy(btn, false); setState('done', 'ok'); $('jobProgressBar').style.width = '100%'; $('jobProgressText').textContent = 'Done';
+            append('done — ' + (j.clips?.length || 0) + ' clips', 'ok'); renderResults(j.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success');
+          } else if (j.status === 'error') {
+            stop(); CF.busy(btn, false); setState('failed', 'bad'); $('jobProgressBar').style.width = '0%'; $('jobProgressText').textContent = 'Failed';
+            append('error: ' + (j.error || 'unknown'), 'bad'); CF.toast(j.error || 'Job failed', 'error');
+          }
+        } catch (e) {
+          stop(); CF.busy(btn, false); setState('disconnected', 'bad'); append('polling error: ' + e.message, 'bad');
         }
-        if (d.type === 'done') { evt.close(); CF.busy(btn, false); setState('done', 'ok'); $('jobProgressBar').style.width = '100%'; $('jobProgressText').textContent = 'Done'; append('done — ' + (d.clips?.length || 0) + ' clips', 'ok'); renderResults(d.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success'); }
-        if (d.type === 'error') { evt.close(); CF.busy(btn, false); setState('failed', 'bad'); $('jobProgressBar').style.width = '0%'; $('jobProgressText').textContent = 'Failed'; append('error: ' + d.error, 'bad'); CF.toast(d.error, 'error'); }
-      };
-      evt.onerror = () => { scheduleError(); };
+      }, 2000);
     } catch (e) { CF.busy(btn, false); setState('failed', 'bad'); CF.toast(e.message, 'error'); }
   }
 

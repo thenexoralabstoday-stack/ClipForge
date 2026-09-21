@@ -481,7 +481,7 @@ app.post('/api/jobs', async (req, res) => {
       return res.status(400).json({ error: 'input (video URL or file) is required' });
     }
 
-    const job = { id, status: 'queued', progress: [], clips: null, error: null, userId: user.id, body };
+    const job = { id, status: 'queued', progress: [], clips: null, error: null, userId: user.id, body, lastProgressAt: null, lastSsePingAt: null };
     JOBS.set(id, job);
     persistJob(job);
     res.json({ id });
@@ -491,6 +491,7 @@ app.post('/api/jobs', async (req, res) => {
       if (!j) return;
       j.progress = j.progress || [];
       j.progress.push(msg);
+      j.lastProgressAt = Date.now();
       if (j.progress.length > 500) j.progress = j.progress.slice(-500);
       persistJob(j);
     };
@@ -552,7 +553,11 @@ app.get('/api/jobs/:id/stream', (req, res) => {
   }, 500);
 
   let heartbeat = setInterval(() => {
-    try { res.write(':\n\n'); } catch {}
+    try {
+      res.write(':\n\n');
+      const j = JOBS.get(req.params.id);
+      if (j) { j.lastSsePingAt = Date.now(); persistJob(j); }
+    } catch {}
   }, 15000);
   res.on('close', () => { clearInterval(interval); clearInterval(heartbeat); });
 });

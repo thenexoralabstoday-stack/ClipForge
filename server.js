@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Nexora Labs. All rights reserved.
 // Contact: thenexoralabstoday@gmail.com
 
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
@@ -929,6 +930,74 @@ app.post('/api/projects/:id/clips', async (req, res) => {
       writeProjects(projects);
     }
     
+    res.json({ clips: saved });
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+app.post('/api/projects/:id/clips/import', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = getUser(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const projects = readProjects();
+    const project = projects.find(p => p.id === req.params.id && p.userId === user.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const items = Array.isArray(req.body?.clips) ? req.body.clips : [];
+    if (!items.length) return res.status(400).json({ error: 'clips array required' });
+
+    ensureStorageDirs();
+    const projectDir = getProjectDir(project.id);
+    const clipDir = path.join(projectDir, 'clips');
+    if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
+
+    const allClips = readClips();
+    const saved = items.map((c) => {
+      const id = c.id || generateId();
+      let renderPath = c.renderPath || null;
+      if (c.fileBuffer && c.fileName) {
+        const safeName = `${id}${path.extname(c.fileName)}`;
+        fs.writeFileSync(path.join(clipDir, safeName), Buffer.from(c.fileBuffer));
+        renderPath = `/storage/${project.id}/clips/${safeName}`;
+      }
+      const clip = {
+        id,
+        projectId: project.id,
+        userId: user.id,
+        title: c.title || 'Imported clip',
+        hook: c.hook || '',
+        start: c.start ?? 0,
+        end: c.end ?? 0,
+        score: c.score ?? null,
+        captions: c.captions || null,
+        description: c.description || '',
+        hashtags: c.hashtags || [],
+        renderStatus: renderPath ? 'done' : 'pending',
+        renderPath,
+        status: 'created',
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      allClips.push(clip);
+      return clip;
+    });
+
+    writeClips(allClips);
+
+    const projectsIdx = projects.findIndex(p => p.id === project.id);
+    if (projectsIdx !== -1) {
+      projects[projectsIdx].clipsCount = (projects[projectsIdx].clipsCount || 0) + saved.length;
+      projects[projectsIdx].status = 'clips_ready';
+      projects[projectsIdx].currentStep = 'clips_ready';
+      projects[projectsIdx].updatedAt = now();
+      writeProjects(projects);
+    }
+
     res.json({ clips: saved });
   } catch (e) {
     fail(res, e);

@@ -37,7 +37,7 @@
   </div>
 
   <section class="panel">
-    <div class="panel__head"><div><h2>Clips</h2><p>Ranked by how likely each moment is to hold attention.</p></div><div class="row"><a class="btn btn--sm" id="editAll">Edit all</a><a class="btn btn--sm" id="publishAll">Publish</a></div></div>
+    <div class="panel__head"><div><h2>Clips</h2><p>Ranked by how likely each moment is to hold attention.</p></div><div class="row"><a class="btn btn--sm" id="editAll">Edit all</a><a class="btn btn--sm" id="publishAll">Publish</a><button class="btn btn--sm" id="importClips">Import clips</button></div></div>
     <div class="list" id="clips"><div class="empty small">Loading…</div></div>
   </section>
 </main>
@@ -53,6 +53,7 @@
   let project = null, clips = [];
   $('editAll').href = `/editor.html?project=${encodeURIComponent(id)}`;
   $('publishAll').href = `/publish.html?project=${encodeURIComponent(id)}`;
+  $('importClips').onclick = importClips;
 
   // Where each server status sits on the Created → Source → Analysed → Rendered → Published track.
   const STAGE = { created: 0, uploaded: 1, analyzing: 1, analyzed: 2, clips_ready: 2, rendering: 3, rendered: 3, published: 4, failed: 0, error: 0 };
@@ -159,6 +160,35 @@
     try { await CF.api(`/clips/${clipId}`, { method: 'DELETE' }); CF.toast('Clip deleted', 'success'); load(); }
     catch (e) { CF.toast(e.message, 'error'); }
   }
+
+  async function importClips() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'video/mp4,video/webm,video/quicktime';
+    input.onchange = async () => {
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      const btn = $('importClips');
+      CF.busy(btn, true);
+      try {
+        const clips = await Promise.all(files.map(async (file) => {
+          const buffer = Array.from(new Uint8Array(await file.arrayBuffer()));
+          const name = file.name.replace(/\.[^.]+$/, '');
+          return { title: name, hook: '', start: 0, end: 0, score: null, captions: null, description: '', hashtags: [], fileName: file.name, fileBuffer: buffer };
+        }));
+        await CF.api(`/projects/${id}/clips/import`, { method: 'POST', body: JSON.stringify({ clips }) });
+        CF.toast(`Imported ${clips.length} clip${clips.length === 1 ? '' : 's'}`, 'success');
+        load();
+      } catch (e) {
+        CF.toast(e.message, 'error', 6000);
+      } finally {
+        CF.busy(btn, false);
+      }
+    };
+    input.click();
+  }
+
   load();
 })();
 </script>

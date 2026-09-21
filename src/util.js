@@ -30,6 +30,11 @@ export async function findCommand(cmd) {
     candidates.push(path.join(userScripts, cmd + '.cmd'));
     candidates.push(path.join('C:', 'Python312', 'Scripts', cmd + '.exe'));
     candidates.push(path.join('C:', 'Python312', 'Scripts', cmd + '.cmd'));
+    if (cmd === 'node' || cmd === 'node.exe') {
+      candidates.push(path.join('C:', 'Program Files', 'nodejs', 'node.exe'));
+      candidates.push(path.join('C:', 'Program Files (x86)', 'nodejs', 'node.exe'));
+      candidates.push(path.join(os.homedir(), 'AppData', 'Roaming', 'npm', cmd + '.cmd'));
+    }
   }
   for (const c of candidates) {
     try {

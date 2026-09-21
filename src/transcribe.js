@@ -19,10 +19,19 @@ export async function transcribeSource(audioOrVideo, opts = {}) {
   let source = 'none';
   const py = process.platform === 'win32' ? 'python' : 'python3';
   const hfToken = process.env.HF_TOKEN;
-  const transcribeEnv = hfToken ? { HF_TOKEN: hfToken } : undefined;
+  const transcribeEnv = hfToken ? { HF_TOKEN: hfToken, PYTHONUNBUFFERED: '1' } : { PYTHONUNBUFFERED: '1' };
   if (await has(py)) {
     try {
-      const { out } = await run(py, [path.join('python', 'transcribe.py'), audioOrVideo, '--model', model, '--language', language], { quiet: false, env: transcribeEnv });
+      let stdoutBuf = '';
+      const { out } = await run(py, [path.join('python', 'transcribe.py'), audioOrVideo, '--model', model, '--language', language], { quiet: false, env: transcribeEnv, onStdout: (chunk) => {
+        stdoutBuf += chunk.toString();
+        let idx;
+        while ((idx = stdoutBuf.indexOf('\n')) >= 0) {
+          const line = stdoutBuf.slice(0, idx).trim();
+          stdoutBuf = stdoutBuf.slice(idx + 1);
+          if (line && opts.onProgress) opts.onProgress(line);
+        }
+      } });
       const parsed = JSON.parse(out);
       if (parsed.segments && parsed.segments.length > 0) {
         const lastEnd = parsed.segments[parsed.segments.length - 1].end || 0;

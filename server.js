@@ -536,7 +536,13 @@ app.get('/api/jobs/:id/stream', (req, res) => {
     if (!j) { clearInterval(interval); res.end(); return; }
     if (j.progress?.length) {
       const last = j.progress[j.progress.length - 1];
-      send({ type: 'log', message: last });
+      const idx = j._streamSent ?? -1;
+      if (j.progress.length > idx) {
+        for (let i = idx + 1; i < j.progress.length; i++) {
+          send({ type: 'log', message: j.progress[i] });
+        }
+        j._streamSent = j.progress.length - 1;
+      }
     }
     if (j.status === 'done' || j.status === 'error') {
       send({ type: j.status, clips: j.clips, error: j.error });

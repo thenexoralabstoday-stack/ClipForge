@@ -68,7 +68,11 @@
 
     <section class="panel">
       <div class="panel__head"><div><h2>Job log</h2><p>Live output from the pipeline.</p></div><span class="badge" id="jobState">idle</span></div>
-      <div class="panel__body"><pre class="log" id="log" aria-live="polite"></pre></div>
+      <div class="panel__body">
+        <div class="usage" id="jobProgress" style="margin-bottom:10px"><i id="jobProgressBar" style="width:0%"></i></div>
+        <p class="small muted" id="jobProgressText" style="margin-top:4px;margin-bottom:8px"></p>
+        <pre class="log" id="log" aria-live="polite"></pre>
+      </div>
     </section>
   </div>
 
@@ -170,6 +174,9 @@
   async function startJob(input, body) {
     const btn = $('qStart');
     CF.busy(btn, true); log.textContent = ''; setState('queued', 'warn'); $('results').hidden = true;
+    $('jobProgress').hidden = false;
+    $('jobProgressBar').style.width = '0%';
+    $('jobProgressText').textContent = 'Starting…';
     try {
       const usage = await CF.api('/usage');
       if (usage.minutesLimit !== null && usage.minutesUsed >= usage.minutesLimit) {
@@ -182,9 +189,17 @@
       const evt = new EventSource(CF.API + '/jobs/' + job.id + '/stream');
       evt.onmessage = e => {
         const d = JSON.parse(e.data);
-        if (d.type === 'log') append(d.message);
-        if (d.type === 'done') { evt.close(); CF.busy(btn, false); setState('done', 'ok'); append('done — ' + (d.clips?.length || 0) + ' clips', 'ok'); renderResults(d.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success'); }
-        if (d.type === 'error') { evt.close(); CF.busy(btn, false); setState('failed', 'bad'); append('error: ' + d.error, 'bad'); CF.toast(d.error, 'error'); }
+        if (d.type === 'log') {
+          append(d.message);
+          const m = d.message.match(/step\s+(\d)\/5/);
+          if (m) {
+            const pct = [0, 10, 30, 50, 70, 90][Number(m[1])] || 0;
+            $('jobProgressBar').style.width = pct + '%';
+            $('jobProgressText').textContent = d.message;
+          }
+        }
+        if (d.type === 'done') { evt.close(); CF.busy(btn, false); setState('done', 'ok'); $('jobProgressBar').style.width = '100%'; $('jobProgressText').textContent = 'Done'; append('done — ' + (d.clips?.length || 0) + ' clips', 'ok'); renderResults(d.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success'); }
+        if (d.type === 'error') { evt.close(); CF.busy(btn, false); setState('failed', 'bad'); $('jobProgressBar').style.width = '0%'; $('jobProgressText').textContent = 'Failed'; append('error: ' + d.error, 'bad'); CF.toast(d.error, 'error'); }
       };
       evt.onerror = () => { evt.close(); CF.busy(btn, false); setState('disconnected', 'bad'); append('lost connection to the job stream', 'bad'); };
     } catch (e) { CF.busy(btn, false); setState('failed', 'bad'); CF.toast(e.message, 'error'); }

@@ -34,7 +34,15 @@
     <div class="stat"><div class="stat__v" id="sRendered">0</div><div class="stat__k meta">Rendered</div></div>
     <div class="stat"><div class="stat__v" id="sProcessing">0</div><div class="stat__k meta">In progress</div></div>
     <div class="stat"><div class="stat__v" id="sScore">—</div><div class="stat__k meta">Avg score</div></div>
+    <div class="stat"><div class="stat__v" id="sStorage">—</div><div class="stat__k meta">Storage</div></div>
   </div>
+
+  <section class="panel">
+    <div class="panel__head"><div><h2>Storage</h2><p>Project files and rendered clips.</p></div><div class="row"><button class="btn btn--ghost btn--sm" id="cleanStorage">Clean intermediate files</button><button class="btn btn--ghost btn--sm" id="deleteSource">Delete source video</button></div></div>
+    <div class="panel__body">
+      <div class="row row--between small muted"><span id="storageDetails">Loading…</span><span id="storageActions"></span></div>
+    </div>
+  </section>
 
   <section class="panel">
     <div class="panel__head"><div><h2>Clips</h2><p>Ranked by how likely each moment is to hold attention.</p></div><div class="row"><a class="btn btn--sm" id="editAll">Edit all</a><a class="btn btn--sm" id="publishAll">Publish</a><button class="btn btn--sm" id="importClips">Import clips</button><button class="btn btn--sm" id="memeSounds" hidden>Meme sounds</button></div></div>
@@ -79,6 +87,8 @@
     const an = $('analyze'); if (an) an.onclick = analyze;
     const ra = $('renderAll'); if (ra) ra.onclick = renderAll;
     const dp = $('deleteProject'); if (dp) dp.onclick = deleteProject;
+    const cs = $('cleanStorage'); if (cs) cs.onclick = cleanStorage;
+    const ds = $('deleteSource'); if (ds) ds.onclick = deleteSource;
     if (p.error) CF.toast(p.error, 'error', 6000);
   }
 
@@ -123,7 +133,36 @@
       const hasAnalysis = !!(project && (project.analysis || project.status === 'analyzed' || project.status === 'clips_ready'));
       const memeBtn = $('memeSounds');
       if (memeBtn) memeBtn.hidden = !hasAnalysis;
+      await renderStorage();
     } catch (e) { CF.toast(e.message, 'error'); $('name').textContent = 'Project not found'; $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
+  }
+
+  async function renderStorage() {
+    try {
+      const files = await CF.api(`/projects/${id}/files`);
+      const total = files.files?.reduce((s, f) => s + (f.size || 0), 0) || 0;
+      const pretty = total > 1024 * 1024 ? (total / (1024 * 1024)).toFixed(1) + ' MB' : total > 1024 ? (total / 1024).toFixed(1) + ' KB' : total + ' B';
+      $('sStorage').textContent = pretty;
+      $('storageDetails').textContent = files.files?.length ? `${files.files.length} file${files.files.length === 1 ? '' : 's'} · ${pretty}` : 'No files yet';
+    } catch (e) { $('storageDetails').textContent = 'Could not load storage info'; }
+  }
+
+  async function cleanStorage() {
+    if (!await CF.confirm('Remove rendered clips and intermediate files? Source video will be kept.', { label: 'Clean' })) return;
+    try {
+      await CF.api(`/projects/${id}/clean`, { method: 'POST' });
+      CF.toast('Cleaned intermediate files', 'success');
+      await renderStorage(); load();
+    } catch (e) { CF.toast(e.message, 'error', 6000); }
+  }
+
+  async function deleteSource() {
+    if (!await CF.confirm('Delete the source video for this project? You can always re-attach it later.', { label: 'Delete source' })) return;
+    try {
+      await CF.api(`/projects/${id}/source`, { method: 'DELETE' });
+      CF.toast('Source deleted', 'success');
+      await renderStorage(); load();
+    } catch (e) { CF.toast(e.message, 'error', 6000); }
   }
 
   function openAttach() {
@@ -194,7 +233,7 @@
       CF.toast('Project deleted', 'success');
       location.href = '/projects.html';
     } catch (e) {
-      CF.toast(e.message, 'error', 6000);
+      CF.toast('Delete failed: ' + e.message, 'error', 8000);
     }
   }
 

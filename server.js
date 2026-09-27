@@ -16,7 +16,6 @@ import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
 import { ClipAnalysisService } from './src/ai.js';
 import { transcribeSource } from './src/transcribe.js';
 import { saveFile, getProjectDir, ensureStorageDirs, fileExists, getStoragePath, downloadFromUrl } from './src/storage.js';
-import { generateId, now } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
@@ -55,6 +54,14 @@ const PLANS = {
   pro: { minutes: 500, watermark: false, price: 49 },
   admin: { minutes: Infinity, watermark: false, price: 0 },
 };
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function now() {
+  return Date.now();
+}
 
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -98,6 +105,22 @@ function resolveSafeClipPath(clipPath) {
   const ok = ALLOWED_FILE_BASES.some(base => fullPath.startsWith(base + path.sep) || fullPath === base);
   if (!ok) throw new Error('Invalid clip path');
   return fullPath;
+}
+
+function formatSrtTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s % 1) * 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+}
+
+function formatVttTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s % 1) * 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
 }
 
 function ensureDataDir() {
@@ -887,6 +910,7 @@ app.get('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => {
 
 app.delete('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => {
   try {
+    console.log('deleting project', req.params.id, 'owner', req.project.userId, 'user', req.user?.id);
     const projectDir = getProjectDir(req.project.id);
     if (fs.existsSync(projectDir)) {
       fs.rmSync(projectDir, { recursive: true, force: true });
@@ -907,56 +931,90 @@ app.delete('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => 
 });
 
 app.post('/api/projects/:id/source', authMiddleware, projectOwnership, async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const projects = readProjects();
-    const pIdx = projects.findIndex(p => p.id === req.params.id && p.userId === user.id);
-    if (pIdx === -1) return res.status(404).json({ error: 'Project not found' });
-    
-    const { sourceType, sourceUrl, fileName, fileBuffer, rightsConfirmed } = req.body || {};
-    if (!rightsConfirmed) return res.status(400).json({ error: 'Rights confirmation required' });
-    
-    ensureStorageDirs();
-    const projectDir = getProjectDir(projects[pIdx].id);
-    if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
-    
-    let sourceFile = null;
-    let meta = { title: projects[pIdx].name, duration: 0, resolution: 'unknown', fps: 0, codec: 'unknown', size: 0 };
-    
-    if (sourceType === 'upload' && fileBuffer) {
-      const ext = fileName?.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : '.mp4';
-      const safeName = `source${ext}`;
-      sourceFile = path.join(projectDir, safeName);
-      fs.writeFileSync(sourceFile, Buffer.from(fileBuffer));
-      meta.size = fileBuffer.length;
-    } else if (sourceType === 'url' && sourceUrl) {
-      const safeName = 'source.mp4';
-      sourceFile = path.join(projectDir, safeName);
-      await downloadFromUrl(sourceUrl, sourceFile);
-      meta.url = sourceUrl;
-      meta.size = fs.statSync(sourceFile).size;
-    } else {
-      return res.status(400).json({ error: 'sourceType must be upload or url' });
-    }
-    
-    projects[pIdx].sourceType = sourceType;
-    projects[pIdx].sourceUrl = sourceUrl || null;
-    projects[pIdx].sourceFile = sourceFile;
-    projects[pIdx].status = 'uploaded';
-    projects[pIdx].currentStep = 'uploaded';
-    projects[pIdx].updatedAt = now();
-    writeProjects(projects);
-    
-    res.json({ project: projects[pIdx], meta });
-  } catch (e) {
-    console.error('source upload failed:', e);
-    res.status(500).json({ error: e.message });
+  const { sourceType, sourceUrl, fileName, fileBuffer, rightsConfirmed } = req.body || {};
+  if (!rightsConfirmed) return res.status(400).json({ error: 'Rights confirmation required' });
+  
+  ensureStorageDirs();
+  const projectDir = getProjectDir(req.project.id);
+  if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+  
+  let sourceFile = null;
+  let meta = { title: req.project.name, duration: 0, resolution: 'unknown', fps: 0, codec: 'unknown', size: 0 };
+  
+  if (sourceType === 'upload' && fileBuffer) {
+    const ext = fileName?.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : '.mp4';
+    const safeName = `source${ext}`;
+    sourceFile = path.join(projectDir, safeName);
+    fs.writeFileSync(sourceFile, Buffer.from(fileBuffer));
+    meta.size = fileBuffer.length;
+  } else if (sourceType === 'url' && sourceUrl) {
+    const safeName = 'source.mp4';
+    sourceFile = path.join(projectDir, safeName);
+    await downloadFromUrl(sourceUrl, sourceFile);
+    meta.url = sourceUrl;
+    meta.size = fs.statSync(sourceFile).size;
+  } else {
+    return res.status(400).json({ error: 'sourceType must be upload or url' });
   }
+  
+  const projects = readProjects();
+  const pIdx = projects.findIndex(p => p.id === req.project.id);
+  projects[pIdx].sourceType = sourceType;
+  projects[pIdx].sourceUrl = sourceUrl || null;
+  projects[pIdx].sourceFile = sourceFile;
+  projects[pIdx].status = 'uploaded';
+  projects[pIdx].currentStep = 'uploaded';
+  projects[pIdx].updatedAt = now();
+  writeProjects(projects);
+  
+  res.json({ project: projects[pIdx], meta });
+}));
+
+app.get('/api/projects/:id/files', authMiddleware, projectOwnership, (req, res) => {
+  const projectDir = getProjectDir(req.project.id);
+  if (!fs.existsSync(projectDir)) return res.json({ files: [] });
+  
+  const files = [];
+  const walk = (dir, base) => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      const rel = path.join(base || '', entry.name);
+      if (entry.isDirectory()) walk(full, rel);
+      else files.push({ name: rel, path: full, size: fs.statSync(full).size });
+    }
+  };
+  walk(projectDir);
+  res.json({ files });
+});
+
+app.post('/api/projects/:id/clean', authMiddleware, projectOwnership, (req, res) => {
+  const projectDir = getProjectDir(req.project.id);
+  if (!fs.existsSync(projectDir)) return res.json({ ok: true });
+  
+  const cleaned = [];
+  for (const entry of fs.readdirSync(projectDir, { withFileTypes: true })) {
+    if (entry.name === 'source.mp4' || entry.name === 'source.webm' || entry.name === 'source.mov' || entry.isDirectory()) continue;
+    const full = path.join(projectDir, entry.name);
+    try { fs.unlinkSync(full); cleaned.push(entry.name); } catch {}
+  }
+  res.json({ ok: true, cleaned });
+});
+
+app.delete('/api/projects/:id/source', authMiddleware, projectOwnership, (req, res) => {
+  const projects = readProjects();
+  const pIdx = projects.findIndex(p => p.id === req.project.id);
+  if (pIdx === -1) return res.status(404).json({ error: 'Project not found' });
+  
+  if (projects[pIdx].sourceFile && fs.existsSync(projects[pIdx].sourceFile)) {
+    try { fs.unlinkSync(projects[pIdx].sourceFile); } catch {}
+  }
+  projects[pIdx].sourceFile = null;
+  projects[pIdx].sourceUrl = null;
+  projects[pIdx].sourceType = null;
+  projects[pIdx].updatedAt = now();
+  writeProjects(projects);
+  res.json({ ok: true });
 });
 
 app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (req, res) => {
@@ -1112,6 +1170,41 @@ app.post('/api/projects/:id/clips/import', authMiddleware, projectOwnership, asy
   }
 
   res.json({ clips: saved });
+});
+
+app.get('/api/clips/:id/export', authMiddleware, clipOwnership, (req, res) => {
+  const clip = req.clip;
+  const project = readProjects().find(p => p.id === clip.projectId);
+  const words = clip.captions?.words || [];
+  const start = clip.start || 0;
+  const end = clip.end || 0;
+  const title = clip.title || 'clip';
+  const description = clip.description || clip.hook || '';
+  const hashtags = Array.isArray(clip.hashtags) ? clip.hashtags : [];
+
+  const srt = words.map((w, i) => {
+    const s = Math.max(0, w.start - start);
+    const e = Math.max(0, w.end - start);
+    return `${i + 1}\n${formatSrtTime(s)} --> ${formatSrtTime(e)}\n${w.word}`;
+  }).join('\n\n');
+
+  const vtt = `WEBVTT\n\n${words.map((w, i) => {
+    const s = Math.max(0, w.start - start);
+    const e = Math.max(0, w.end - start);
+    return `${formatVttTime(s)} --> ${formatVttTime(e)}\n${w.word}`;
+  }).join('\n\n')}`;
+
+  const post = `# ${title}\n\n${description}\n\n## Hashtags\n${hashtags.map(h => `#${h.replace(/^#/, '')}`).join(' ')}\n\n## Clip\n${project?.name || ''} · ${CF.fmt.secs(start)} → ${CF.fmt.secs(end)}`;
+
+  const format = req.query.format || 'srt';
+  let content = srt, filename = `${title}.srt`, contentType = 'text/plain';
+  if (format === 'vtt') { content = vtt; filename = `${title}.vtt`; }
+  else if (format === 'md' || format === 'post') { content = post; filename = `${title}.md`; }
+  else if (format === 'all') return res.json({ srt, vtt, post });
+
+  res.setHeader('Content-Type', contentType || 'text/plain');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(content);
 });
 
 app.patch('/api/clips/:id', authMiddleware, clipOwnership, (req, res) => {

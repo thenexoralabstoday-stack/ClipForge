@@ -45,7 +45,7 @@
     $('clips').innerHTML = clips.map((c, i) => `
       <div class="clip" data-clip="${CF.esc(c.id)}">
         <div class="clip__thumb">${c.renderPath ? `<video src="${CF.esc(c.renderPath)}" preload="metadata" muted playsinline></video>` : '<svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg>'}</div>
-        <div>
+        <div style="min-width:0">
           <div class="row row--between"><span class="mono muted">clip ${i + 1}</span><span class="row">${CF.badge(c.renderStatus || 'pending')}<span class="score">${c.score ?? '—'}<small> /100</small></span></span></div>
           <div class="clip__edit">
             <div class="field"><label>Title</label><input class="input" data-i="${i}" data-f="title" value="${CF.esc(c.title || '')}" placeholder="Title"></div>
@@ -53,15 +53,23 @@
             <div class="field"><label>Start (s)</label><input class="input" data-i="${i}" data-f="start" type="number" step="0.1" min="0" value="${c.start ?? 0}"></div>
             <div class="field"><label>End (s)</label><input class="input" data-i="${i}" data-f="end" type="number" step="0.1" min="0" value="${c.end ?? 0}"></div>
           </div>
+          <div class="timeline" data-i="${i}" style="margin-top:10px">
+            <div class="timeline__track"><div class="timeline__range" style="left:${((c.start||0)/60)*100}%;right:${100-(((c.end||0)/60)*100)}%"></div></div>
+            <div class="row row--between muted mono" style="margin-top:6px"><span>${CF.fmt.secs(c.start||0)}</span><span>${CF.fmt.secs(c.end||0)}</span></div>
+          </div>
           <div class="row" style="margin-top:12px">
             <button class="btn btn--sm" data-render="${c.id}">${c.renderStatus === 'done' ? 'Re-render' : 'Render'}</button>
             <button class="btn btn--ghost btn--sm" data-delete="${c.id}">Delete</button>
+            <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=srt" download>SRT</a>
+            <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=vtt" download>VTT</a>
+            <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=md" download>Post</a>
           </div>
         </div>
       </div>`).join('');
     $('clips').querySelectorAll('input[data-f]').forEach(el => el.oninput = () => { dirty.add(+el.dataset.i); setState(`${dirty.size} unsaved`, 'warn'); });
     $('clips').querySelectorAll('[data-render]').forEach(b => b.onclick = () => renderClip(b.dataset.render, b));
     $('clips').querySelectorAll('[data-delete]').forEach(b => b.onclick = () => deleteClip(b.dataset.delete));
+    bindTimeline();
   }
 
   function collect() {
@@ -94,6 +102,58 @@
     catch (e) { CF.toast(e.message, 'error'); }
   }
   window.addEventListener('beforeunload', e => { if (dirty.size) { e.preventDefault(); e.returnValue = ''; } });
+
+  function bindTimeline() {
+    $('clips').querySelectorAll('.timeline').forEach(tl => {
+      const idx = +tl.dataset.i;
+      const range = tl.querySelector('.timeline__range');
+      let dragging = null;
+      const clip = () => clips[idx];
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      const updateFromEvent = (e) => {
+        const rect = tl.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const pct = clamp(x / rect.width, 0, 1);
+        const secs = Math.round(pct * 60 * 10) / 10;
+        const c = clip();
+        if (dragging === 'start') { c.start = Math.min(secs, c.end - 0.5); }
+        else if (dragging === 'end') { c.end = Math.max(secs, c.start + 0.5); }
+        dirty.add(idx); setState(`${dirty.size} unsaved`, 'warn');
+        render();
+      };
+
+      tl.addEventListener('mousedown', e => {
+        dragging = e.target.classList.contains('timeline__range') ? 'range' : (e.target === range ? null : (e.offsetX < tl.getBoundingClientRect().width / 2 ? 'start' : 'end'));
+        updateFromEvent(e);
+      });
+      document.addEventListener('mousemove', e => { if (dragging) updateFromEvent(e); });
+      document.addEventListener('mouseup', () => { dragging = null; });
+      tl.addEventListener('touchstart', e => { dragging = e.target === range ? 'range' : (e.target === range ? null : (e.touches?.[0]?.clientX < tl.getBoundingClientRect().left + tl.getBoundingClientRect().width / 2 ? 'start' : 'end')); updateFromEvent(e); }, { passive: true });
+      document.addEventListener('touchmove', e => { if (dragging) updateFromEvent(e); }, { passive: true });
+      document.addEventListener('touchend', () => { dragging = null; });
+    });
+  }
+
+  function fmtTime(s) {
+    if (s == null) return '';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    const cs = Math.floor((s % 1) * 100);
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+  }
+
+  async function save(btn) {
+    collect();
+    const bad = clips.find(c => c.end <= c.start);
+    if (bad) return CF.toast(`“${bad.title || 'A clip'}” ends before it starts`, 'error');
+    if (!dirty.size) return CF.toast('Nothing to save', 'info');
+    CF.busy(btn, true);
+    try {
+      for (const i of dirty) { const c = clips[i]; await CF.api(`/clips/${c.id}`, { method: 'PATCH', body: JSON.stringify({ title: c.title, hook: c.hook, start: c.start, end: c.end, captions: c.captions || null }) }); }
+      CF.toast(`Saved ${dirty.size} clip${dirty.size === 1 ? '' : 's'}. Re-render to apply.`, 'success'); dirty.clear(); setState('saved', 'ok');
+    } catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy(btn, false); }
+  }
   load();
 })();
 </script>

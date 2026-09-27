@@ -14,6 +14,7 @@ import { getYouTubeAuthUrl, exchangeYouTubeCode, getTikTokAuthUrl, exchangeTikTo
 import { getMemeSounds, analyzeMemeSoundMoments, generateMemeSoundPlan } from './src/meme-ai.js';
 import { addMultipleMemeSounds, addMemeSoundToClip } from './src/audio.js';
 import { ClipAnalysisService } from './src/ai.js';
+import { transcribeSource } from './src/transcribe.js';
 import { saveFile, getProjectDir, ensureStorageDirs, fileExists, getStoragePath, downloadFromUrl } from './src/storage.js';
 import { generateId, now } from './src/db.js';
 
@@ -762,6 +763,79 @@ app.post('/api/meme-sounds/apply-all/:jobId', async (req, res) => {
   }
 });
 
+// Project meme sounds
+app.get('/api/projects/:id/meme-sounds', authMiddleware, projectOwnership, (req, res) => {
+  res.json({ sounds: getMemeSounds() });
+});
+
+app.get('/api/projects/:id/meme-sounds/plan', authMiddleware, projectOwnership, (req, res) => {
+  const projectDir = getProjectDir(req.project.id);
+  const transcriptPath = path.join(projectDir, 'transcript.json');
+  if (!fs.existsSync(transcriptPath)) return res.status(404).json({ error: 'transcript not found. Analyse the project first.' });
+  const transcript = JSON.parse(fs.readFileSync(transcriptPath, 'utf8'));
+  
+  const clips = readClips().filter(c => c.projectId === req.project.id);
+  if (!clips.length) return res.status(404).json({ error: 'no clips found' });
+  
+  const moments = analyzeMemeSoundMoments(transcript);
+  const plan = generateMemeSoundPlan(clips.map((c, i) => ({ ...c, index: i })), moments);
+  res.json({ plan, moments });
+});
+
+app.post('/api/projects/:id/meme-sounds/analyze', authMiddleware, projectOwnership, async (req, res) => {
+  const projectDir = getProjectDir(req.project.id);
+  const transcriptPath = path.join(projectDir, 'transcript.json');
+  if (!fs.existsSync(transcriptPath)) return res.status(404).json({ error: 'transcript not found. Analyse the project first.' });
+  const transcript = JSON.parse(fs.readFileSync(transcriptPath, 'utf8'));
+  
+  try {
+    const moments = await analyzeMemeSoundMoments(transcript);
+    const clips = readClips().filter(c => c.projectId === req.project.id);
+    const plan = generateMemeSoundPlan(clips.map((c, i) => ({ ...c, index: i })), moments);
+    res.json({ moments: plan, rawMoments: moments });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/projects/:id/meme-sounds/apply/:clipId', authMiddleware, projectOwnership, async (req, res) => {
+  const clip = req.clip;
+  const { soundTimings } = req.body;
+  
+  const clipPath = clip.renderPath ? path.resolve(`.${clip.renderPath}`) : path.resolve(`./output/${req.project.id}/clips/${clip.id}.mp4`);
+  if (!fs.existsSync(clipPath)) return res.status(404).json({ error: 'clip file not found' });
+  
+  try {
+    const result = await addMultipleMemeSounds(clipPath, soundTimings);
+    res.json({ ok: true, message: 'Meme sounds applied', output: result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/projects/:id/meme-sounds/apply-all', authMiddleware, projectOwnership, async (req, res) => {
+  const { moments } = req.body;
+  const clips = readClips().filter(c => c.projectId === req.project.id);
+  
+  try {
+    const results = [];
+    for (let i = 0; i < clips.length; i++) {
+      const clip = clips[i];
+      const clipPath = clip.renderPath ? path.resolve(`.${clip.renderPath}`) : path.resolve(`./output/${req.project.id}/clips/${clip.id}.mp4`);
+      if (!fs.existsSync(clipPath)) continue;
+      
+      const clipMoments = moments[i]?.sounds || [];
+      if (clipMoments.length > 0) {
+        const result = await addMultipleMemeSounds(clipPath, clipMoments);
+        results.push({ clip: i + 1, output: result });
+      }
+    }
+    res.json({ ok: true, message: `Applied meme sounds to ${results.length} clips`, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Projects
 app.get('/api/projects', authMiddleware, (req, res) => {
   const projects = readProjects().filter(p => p.userId === req.user.id);
@@ -859,8 +933,10 @@ app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (r
   if (!req.project.sourceFile) return res.status(400).json({ error: 'No source video uploaded' });
   
   try {
+    const projectDir = getProjectDir(req.project.id);
+    const transcript = await transcribeSource(req.project.sourceFile, { model: 'base', workDir: projectDir });
     const analysisService = new ClipAnalysisService();
-    const result = await analysisService.analyzeVideo({ segments: [] }, { duration: 0, title: req.project.name });
+    const result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name });
     
     const projects = readProjects();
     const pIdx = projects.findIndex(p => p.id === req.project.id);

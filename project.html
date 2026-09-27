@@ -55,9 +55,8 @@
   $('publishAll').href = `/publish.html?project=${encodeURIComponent(id)}`;
   $('importClips').onclick = importClips;
   $('memeSounds').onclick = () => {
-    const jobId = project?.jobId;
-    if (!jobId) return CF.toast('No job linked to this project. Import clips from a Quick Forge job first.', 'error');
-    location.href = `/meme-sounds.html?job=${encodeURIComponent(jobId)}`;
+    if (!project?.id) return CF.toast('Open a project first', 'error');
+    location.href = `/meme-sounds.html?project=${encodeURIComponent(project.id)}`;
   };
 
   // Where each server status sits on the Created → Source → Analysed → Rendered → Published track.
@@ -117,9 +116,10 @@
       project = (await CF.api(`/projects/${id}`)).project;
       clips = (await CF.api(`/projects/${id}/clips`)).clips || [];
       renderHeader(); renderClips();
-      const hasJob = !!(project && project.jobId);
+      const projectDir = project?.id ? `storage/${project.id}` : '';
+      const hasTranscript = !!(project && project.status === 'analyzed');
       const memeBtn = $('memeSounds');
-      if (memeBtn) memeBtn.hidden = !hasJob;
+      if (memeBtn) memeBtn.hidden = !hasTranscript;
     } catch (e) { CF.toast(e.message, 'error'); $('name').textContent = 'Project not found'; $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 

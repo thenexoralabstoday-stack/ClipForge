@@ -17,8 +17,8 @@
   <div class="page-head"><div><h1>Meme sounds</h1><p>Pick sounds from the library, let the AI find the moments in a job’s clips that call for one, then apply them.</p></div></div>
 
   <div class="panel">
-    <div class="panel__head"><div><h2>Job</h2><p>Sounds are applied to the clips of a Quick forge job.</p></div></div>
-    <div class="panel__body"><div class="row"><input class="input" id="job" placeholder="Job id, e.g. m1x2y3" style="max-width:260px"><button class="btn btn--primary" id="analyze">Find meme moments</button><span id="state" class="badge">idle</span></div></div>
+    <div class="panel__head"><div><h2>Job / Project</h2><p>Sounds are applied to the clips of a Quick forge job or project.</p></div></div>
+    <div class="panel__body"><div class="row"><input class="input" id="job" placeholder="Job id, e.g. m1x2y3" style="max-width:260px"><input class="input" id="project" placeholder="Project id, e.g. px9y8z" style="max-width:260px"><button class="btn btn--primary" id="analyze">Find meme moments</button><span id="state" class="badge">idle</span></div></div>
   </div>
 
   <div class="grid grid--2" style="align-items:start">
@@ -39,8 +39,10 @@
   const shell = CF.mount({ active: 'sounds', title: 'Meme sounds' });
   if (!shell) return;
   const $ = id => document.getElementById(id);
-  $('job').value = new URLSearchParams(location.search).get('job') || '';
-  let sounds = [], selected = null, moments = {};
+  const params = new URLSearchParams(location.search);
+  $('job').value = params.get('job') || '';
+  $('project').value = params.get('project') || '';
+  let sounds = [], selected = null, moments = {}, mode = null;
   const setState = (t, k) => { $('state').textContent = t; $('state').className = 'badge badge--' + k + (k === 'warn' ? ' badge--pulse' : ''); };
 
   function renderSounds() {
@@ -63,22 +65,40 @@
   renderSounds();
 
   $('analyze').onclick = async () => {
-    const job = $('job').value.trim(); if (!job) return CF.toast('Enter a job id', 'error');
+    const job = $('job').value.trim();
+    const project = $('project').value.trim();
+    if (!job && !project) return CF.toast('Enter a job id or project id', 'error');
+    mode = project ? 'project' : 'job';
     CF.busy($('analyze'), true); setState('analysing', 'warn');
-    try { moments = (await CF.api(`/meme-sounds/analyze/${encodeURIComponent(job)}`, { method: 'POST' })).moments || {}; renderMoments(); setState(`${Object.keys(moments).length} clips`, 'ok'); }
-    catch (e) { CF.toast(e.message, 'error', 6000); setState('failed', 'bad'); }
+    try {
+      const endpoint = mode === 'project' ? `/projects/${encodeURIComponent(project)}/meme-sounds/analyze` : `/meme-sounds/analyze/${encodeURIComponent(job)}`;
+      moments = (await CF.api(endpoint, { method: 'POST' })).moments || {};
+      renderMoments(); setState(`${Object.keys(moments).length} clips`, 'ok');
+    } catch (e) { CF.toast(e.message, 'error', 6000); setState('failed', 'bad'); }
     finally { CF.busy($('analyze'), false); }
   };
   async function apply(clip, j, btn) {
     if (selected == null) return CF.toast('Select a sound first', 'error');
-    const job = $('job').value.trim(); CF.busy(btn, true);
-    try { await CF.api(`/meme-sounds/apply/${encodeURIComponent(job)}/${clip}`, { method: 'POST', body: JSON.stringify({ soundTimings: [{ sound: sounds[selected].id || sounds[selected].name, time: moments[clip][j].time }] }) }); CF.toast(`Applied “${sounds[selected].name}”`, 'success'); }
-    catch (e) { CF.toast(e.message, 'error', 6000); } finally { CF.busy(btn, false); }
+    const job = $('job').value.trim();
+    const project = $('project').value.trim();
+    if (!job && !project) return CF.toast('Enter a job id or project id', 'error');
+    CF.busy(btn, true);
+    try {
+      const endpoint = project ? `/projects/${encodeURIComponent(project)}/meme-sounds/apply/${encodeURIComponent(clip)}` : `/meme-sounds/apply/${encodeURIComponent(job)}/${encodeURIComponent(clip)}`;
+      await CF.api(endpoint, { method: 'POST', body: JSON.stringify({ soundTimings: [{ sound: sounds[selected].id || sounds[selected].name, time: moments[clip][j].time }] }) });
+      CF.toast(`Applied "${sounds[selected].name}"`, 'success');
+    } catch (e) { CF.toast(e.message, 'error', 6000); } finally { CF.busy(btn, false); }
   }
   $('applyAll').onclick = async () => {
-    const job = $('job').value.trim(); CF.busy($('applyAll'), true);
-    try { await CF.api(`/meme-sounds/apply-all/${encodeURIComponent(job)}`, { method: 'POST' }); CF.toast('Sounds applied to all clips', 'success'); }
-    catch (e) { CF.toast(e.message, 'error', 6000); } finally { CF.busy($('applyAll'), false); }
+    const job = $('job').value.trim();
+    const project = $('project').value.trim();
+    if (!job && !project) return CF.toast('Enter a job id or project id', 'error');
+    CF.busy($('applyAll'), true);
+    try {
+      const endpoint = project ? `/projects/${encodeURIComponent(project)}/meme-sounds/apply-all` : `/meme-sounds/apply-all/${encodeURIComponent(job)}`;
+      await CF.api(endpoint, { method: 'POST', body: JSON.stringify({ moments }) });
+      CF.toast('Sounds applied to all clips', 'success');
+    } catch (e) { CF.toast(e.message, 'error', 6000); } finally { CF.busy($('applyAll'), false); }
   };
 })();
 </script>

@@ -4,6 +4,7 @@
 // Download a source video with yt-dlp (or accept a local file). Also grabs auto-captions as a transcription fallback.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { run, findCommand, ensureDir, log, readJson } from './util.js';
 
 /**
@@ -49,7 +50,7 @@ export async function fetchSource(input, workDir) {
     '-f', 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b',
     '--merge-output-format', 'mp4',
     '--write-info-json',
-    '--write-auto-subs',
+    '--no-write-auto-subs',
     '--write-subs',
     '--sub-langs', 'en.*,en',
     '--sub-format', 'json3',
@@ -62,9 +63,9 @@ export async function fetchSource(input, workDir) {
 
   let ytArgs = baseArgs;
   if (process.platform === 'win32') {
-    const nodeCmd = await findCommand('node');
-    if (nodeCmd) {
-      ytArgs = ['--js-runtimes', nodeCmd, ...baseArgs];
+    const denoPath = path.join(os.homedir(), 'AppData', 'Local', 'deno', 'deno.exe');
+    if (fs.existsSync(denoPath)) {
+      ytArgs = ['--js-runtimes', `deno:${denoPath}`, ...baseArgs];
     }
   }
 

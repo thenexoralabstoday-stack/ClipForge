@@ -50,6 +50,38 @@ const PLANS = {
   admin: { minutes: Infinity, watermark: false, price: 0 },
 };
 
+function authMiddleware(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = getUser(decoded.id);
+    if (!req.user) return res.status(404).json({ error: 'User not found' });
+    next();
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+function projectOwnership(req, res, next) {
+  const projects = readProjects();
+  const project = projects.find(p => p.id === req.params.id && p.userId === req.user.id);
+  if (!project) return res.status(404).json({ error: 'Project not found' });
+  req.project = project;
+  req.projectsIndex = projects.findIndex(p => p.id === req.params.id);
+  next();
+}
+
+function clipOwnership(req, res, next) {
+  const clips = readClips();
+  const clip = clips.find(c => c.id === req.params.id && c.userId === req.user.id);
+  if (!clip) return res.status(404).json({ error: 'Clip not found' });
+  req.clip = clip;
+  req.clips = clips;
+  req.clipIndex = clips.findIndex(c => c.id === req.params.id);
+  next();
+}
+
 function ensureDataDir() {
   const dir = path.dirname(USERS_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -731,79 +763,46 @@ app.post('/api/meme-sounds/apply-all/:jobId', async (req, res) => {
 });
 
 // Projects
-app.get('/api/projects', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const projects = readProjects().filter(p => p.userId === user.id);
-    res.json({ projects });
-  } catch (e) {
-    fail(res, e);
-  }
+app.get('/api/projects', authMiddleware, (req, res) => {
+  const projects = readProjects().filter(p => p.userId === req.user.id);
+  res.json({ projects });
 });
 
-app.post('/api/projects', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const { name, sourceType, sourceUrl, rightsConfirmed } = req.body || {};
-    if (!name) return res.status(400).json({ error: 'Project name required' });
-    if (!sourceType) return res.status(400).json({ error: 'sourceType required' });
-    if (!rightsConfirmed) return res.status(400).json({ error: 'You must confirm rights to process this content' });
-    
-    const projects = readProjects();
-    const project = {
-      id: generateId(),
-      userId: user.id,
-      name,
-      sourceType,
-      sourceUrl: sourceUrl || null,
-      status: 'created',
-      progress: 0,
-      currentStep: 'created',
-      clipsCount: 0,
-      rendersCount: 0,
-      publishesCount: 0,
-      error: null,
-      rightsConfirmedAt: now(),
-      createdAt: now(),
-      updatedAt: now()
-    };
-    projects.push(project);
-    writeProjects(projects);
-    
-    res.json({ project });
-  } catch (e) {
-    fail(res, e);
-  }
+app.post('/api/projects', authMiddleware, (req, res) => {
+  const { name, sourceType, sourceUrl, rightsConfirmed } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Project name required' });
+  if (!sourceType) return res.status(400).json({ error: 'sourceType required' });
+  if (!rightsConfirmed) return res.status(400).json({ error: 'You must confirm rights to process this content' });
+  
+  const projects = readProjects();
+  const project = {
+    id: generateId(),
+    userId: req.user.id,
+    name,
+    sourceType,
+    sourceUrl: sourceUrl || null,
+    status: 'created',
+    progress: 0,
+    currentStep: 'created',
+    clipsCount: 0,
+    rendersCount: 0,
+    publishesCount: 0,
+    error: null,
+    rightsConfirmedAt: now(),
+    createdAt: now(),
+    updatedAt: now()
+  };
+  projects.push(project);
+  writeProjects(projects);
+  
+  res.json({ project });
 });
 
-app.get('/api/projects/:id', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    
-    res.json({ project });
-  } catch (e) {
-    fail(res, e);
-  }
+app.get('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => {
+  res.json({ project: req.project });
 });
 
-app.post('/api/projects/:id/source', async (req, res) => {
+app.post('/api/projects/:id/source', authMiddleware, projectOwnership, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
@@ -856,29 +855,22 @@ app.post('/api/projects/:id/source', async (req, res) => {
   }
 });
 
-app.post('/api/projects/:id/analyze', async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
+app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (req, res) => {
+  if (!req.project.sourceFile) return res.status(400).json({ error: 'No source video uploaded' });
+  
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const analysisService = new ClipAnalysisService();
+    const result = await analysisService.analyzeVideo({ segments: [] }, { duration: 0, title: req.project.name });
     
     const projects = readProjects();
-    const project = projects.find(p => p.id === req.params.id && p.userId === user.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    if (!project.sourceFile) return res.status(400).json({ error: 'No source video uploaded' });
-    
-    const analysisService = new ClipAnalysisService();
-    const result = await analysisService.analyzeVideo({ segments: [] }, { duration: 0, title: project.name });
-    
-    project.status = 'analyzed';
-    project.currentStep = 'analyzed';
-    project.analysis = result;
-    project.updatedAt = now();
+    const pIdx = projects.findIndex(p => p.id === req.project.id);
+    projects[pIdx].status = 'analyzed';
+    projects[pIdx].currentStep = 'analyzed';
+    projects[pIdx].analysis = result;
+    projects[pIdx].updatedAt = now();
     writeProjects(projects);
     
-    res.json({ analysis: result, project });
+    res.json({ analysis: result, project: projects[pIdx] });
   } catch (e) {
     console.error('analysis failed:', e);
     res.status(500).json({ error: e.message });
@@ -886,175 +878,107 @@ app.post('/api/projects/:id/analyze', async (req, res) => {
 });
 
 // Clips
-app.get('/api/projects/:id/clips', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    
-    const clips = readClips().filter(c => c.projectId === project.id);
-    res.json({ clips });
-  } catch (e) {
-    fail(res, e);
-  }
+app.get('/api/projects/:id/clips', authMiddleware, projectOwnership, (req, res) => {
+  const clips = readClips().filter(c => c.projectId === req.project.id);
+  res.json({ clips });
 });
 
-app.post('/api/projects/:id/clips', async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const project = readProjects().find(p => p.id === req.params.id && p.userId === user.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    
-    const { clips } = req.body || {};
-    if (!Array.isArray(clips)) return res.status(400).json({ error: 'clips must be an array' });
-    
-    const allClips = readClips();
-    const saved = clips.map(c => ({
-      id: generateId(),
-      projectId: project.id,
-      userId: user.id,
-      ...c,
+app.post('/api/projects/:id/clips', authMiddleware, projectOwnership, (req, res) => {
+  const { clips } = req.body || {};
+  if (!Array.isArray(clips)) return res.status(400).json({ error: 'clips must be an array' });
+  
+  const allClips = readClips();
+  const saved = clips.map(c => ({
+    id: generateId(),
+    projectId: req.project.id,
+    userId: req.user.id,
+    ...c,
+    status: 'created',
+    renderStatus: 'pending',
+    createdAt: now(),
+    updatedAt: now()
+  }));
+  allClips.push(...saved);
+  writeClips(allClips);
+  
+  const projects = readProjects();
+  const pIdx = projects.findIndex(p => p.id === req.project.id);
+  if (pIdx !== -1) {
+    projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
+    projects[pIdx].status = 'clips_ready';
+    projects[pIdx].currentStep = 'clips_ready';
+    writeProjects(projects);
+  }
+  
+  res.json({ clips: saved });
+});
+
+app.post('/api/projects/:id/clips/import', authMiddleware, projectOwnership, async (req, res) => {
+  const items = Array.isArray(req.body?.clips) ? req.body.clips : [];
+  if (!items.length) return res.status(400).json({ error: 'clips array required' });
+
+  ensureStorageDirs();
+  const projectDir = getProjectDir(req.project.id);
+  const clipDir = path.join(projectDir, 'clips');
+  if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
+
+  const allClips = readClips();
+  const saved = items.map((c) => {
+    const id = c.id || generateId();
+    let renderPath = c.renderPath || null;
+    if (c.fileBuffer && c.fileName) {
+      const safeName = `${id}${path.extname(c.fileName)}`;
+      fs.writeFileSync(path.join(clipDir, safeName), Buffer.from(c.fileBuffer));
+      renderPath = `/storage/${req.project.id}/clips/${safeName}`;
+    }
+    const clip = {
+      id,
+      projectId: req.project.id,
+      userId: req.user.id,
+      title: c.title || 'Imported clip',
+      hook: c.hook || '',
+      start: c.start ?? 0,
+      end: c.end ?? 0,
+      score: c.score ?? null,
+      captions: c.captions || null,
+      description: c.description || '',
+      hashtags: c.hashtags || [],
+      renderStatus: renderPath ? 'done' : 'pending',
+      renderPath,
       status: 'created',
-      renderStatus: 'pending',
       createdAt: now(),
-      updatedAt: now()
-    }));
-    allClips.push(...saved);
-    writeClips(allClips);
-    
-    const projects = readProjects();
-    const pIdx = projects.findIndex(p => p.id === project.id);
-    if (pIdx !== -1) {
-      projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
-      projects[pIdx].status = 'clips_ready';
-      projects[pIdx].currentStep = 'clips_ready';
-      writeProjects(projects);
-    }
-    
-    res.json({ clips: saved });
-  } catch (e) {
-    fail(res, e);
+      updatedAt: now(),
+    };
+    allClips.push(clip);
+    return clip;
+  });
+
+  writeClips(allClips);
+
+  const projects = readProjects();
+  const pIdx = projects.findIndex(p => p.id === req.project.id);
+  if (pIdx !== -1) {
+    projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
+    projects[pIdx].status = 'clips_ready';
+    projects[pIdx].currentStep = 'clips_ready';
+    if (req.body?.jobId) projects[pIdx].jobId = req.body.jobId;
+    projects[pIdx].updatedAt = now();
+    writeProjects(projects);
   }
+
+  res.json({ clips: saved });
 });
 
-app.post('/api/projects/:id/clips/import', async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const projects = readProjects();
-    const project = projects.find(p => p.id === req.params.id && p.userId === user.id);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-
-    const items = Array.isArray(req.body?.clips) ? req.body.clips : [];
-    if (!items.length) return res.status(400).json({ error: 'clips array required' });
-
-    ensureStorageDirs();
-    const projectDir = getProjectDir(project.id);
-    const clipDir = path.join(projectDir, 'clips');
-    if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
-
-    const allClips = readClips();
-    const saved = items.map((c) => {
-      const id = c.id || generateId();
-      let renderPath = c.renderPath || null;
-      if (c.fileBuffer && c.fileName) {
-        const safeName = `${id}${path.extname(c.fileName)}`;
-        fs.writeFileSync(path.join(clipDir, safeName), Buffer.from(c.fileBuffer));
-        renderPath = `/storage/${project.id}/clips/${safeName}`;
-      }
-      const clip = {
-        id,
-        projectId: project.id,
-        userId: user.id,
-        title: c.title || 'Imported clip',
-        hook: c.hook || '',
-        start: c.start ?? 0,
-        end: c.end ?? 0,
-        score: c.score ?? null,
-        captions: c.captions || null,
-        description: c.description || '',
-        hashtags: c.hashtags || [],
-        renderStatus: renderPath ? 'done' : 'pending',
-        renderPath,
-        status: 'created',
-        createdAt: now(),
-        updatedAt: now(),
-      };
-      allClips.push(clip);
-      return clip;
-    });
-
-    writeClips(allClips);
-
-    const projectsIdx = projects.findIndex(p => p.id === project.id);
-    if (projectsIdx !== -1) {
-      projects[projectsIdx].clipsCount = (projects[projectsIdx].clipsCount || 0) + saved.length;
-      projects[projectsIdx].status = 'clips_ready';
-      projects[projectsIdx].currentStep = 'clips_ready';
-      projects[projectsIdx].updatedAt = now();
-      writeProjects(projects);
-    }
-
-    res.json({ clips: saved });
-  } catch (e) {
-    fail(res, e);
-  }
+app.patch('/api/clips/:id', authMiddleware, clipOwnership, (req, res) => {
+  req.clips[req.clipIndex] = { ...req.clips[req.clipIndex], ...req.body, updatedAt: now() };
+  writeClips(req.clips);
+  res.json({ clip: req.clips[req.clipIndex] });
 });
 
-app.patch('/api/clips/:id', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const clips = readClips();
-    const idx = clips.findIndex(c => c.id === req.params.id && c.userId === user.id);
-    if (idx === -1) return res.status(404).json({ error: 'Clip not found' });
-    
-    clips[idx] = { ...clips[idx], ...req.body, updatedAt: now() };
-    writeClips(clips);
-    
-    res.json({ clip: clips[idx] });
-  } catch (e) {
-    fail(res, e);
-  }
-});
-
-app.delete('/api/clips/:id', (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUser(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const clips = readClips();
-    const idx = clips.findIndex(c => c.id === req.params.id && c.userId === user.id);
-    if (idx === -1) return res.status(404).json({ error: 'Clip not found' });
-    
-    clips.splice(idx, 1);
-    writeClips(clips);
-    
-    res.json({ ok: true });
-  } catch (e) {
-    fail(res, e);
-  }
+app.delete('/api/clips/:id', authMiddleware, clipOwnership, (req, res) => {
+  req.clips.splice(req.clipIndex, 1);
+  writeClips(req.clips);
+  res.json({ ok: true });
 });
 
 app.post('/api/clips/:id/generate-metadata', async (req, res) => {

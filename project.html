@@ -37,7 +37,7 @@
   </div>
 
   <section class="panel">
-    <div class="panel__head"><div><h2>Clips</h2><p>Ranked by how likely each moment is to hold attention.</p></div><div class="row"><a class="btn btn--sm" id="editAll">Edit all</a><a class="btn btn--sm" id="publishAll">Publish</a><button class="btn btn--sm" id="importClips">Import clips</button></div></div>
+    <div class="panel__head"><div><h2>Clips</h2><p>Ranked by how likely each moment is to hold attention.</p></div><div class="row"><a class="btn btn--sm" id="editAll">Edit all</a><a class="btn btn--sm" id="publishAll">Publish</a><button class="btn btn--sm" id="importClips">Import clips</button><button class="btn btn--sm" id="memeSounds" hidden>Meme sounds</button></div></div>
     <div class="list" id="clips"><div class="empty small">Loading…</div></div>
   </section>
 </main>
@@ -54,6 +54,11 @@
   $('editAll').href = `/editor.html?project=${encodeURIComponent(id)}`;
   $('publishAll').href = `/publish.html?project=${encodeURIComponent(id)}`;
   $('importClips').onclick = importClips;
+  $('memeSounds').onclick = () => {
+    const jobId = project?.jobId;
+    if (!jobId) return CF.toast('No job linked to this project. Import clips from a Quick Forge job first.', 'error');
+    location.href = `/meme-sounds.html?job=${encodeURIComponent(jobId)}`;
+  };
 
   // Where each server status sits on the Created → Source → Analysed → Rendered → Published track.
   const STAGE = { created: 0, uploaded: 1, analyzing: 1, analyzed: 2, clips_ready: 2, rendering: 3, rendered: 3, published: 4, failed: 0, error: 0 };
@@ -112,6 +117,9 @@
       project = (await CF.api(`/projects/${id}`)).project;
       clips = (await CF.api(`/projects/${id}/clips`)).clips || [];
       renderHeader(); renderClips();
+      const hasJob = !!(project && project.jobId);
+      const memeBtn = $('memeSounds');
+      if (memeBtn) memeBtn.hidden = !hasJob;
     } catch (e) { CF.toast(e.message, 'error'); $('name').textContent = 'Project not found'; $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 
@@ -177,7 +185,9 @@
           const name = file.name.replace(/\.[^.]+$/, '');
           return { title: name, hook: '', start: 0, end: 0, score: null, captions: null, description: '', hashtags: [], fileName: file.name, fileBuffer: buffer };
         }));
-        await CF.api(`/projects/${id}/clips/import`, { method: 'POST', body: JSON.stringify({ clips }) });
+        const payload = { clips };
+        if (project?.jobId) payload.jobId = project.jobId;
+        await CF.api(`/projects/${id}/clips/import`, { method: 'POST', body: JSON.stringify(payload) });
         CF.toast(`Imported ${clips.length} clip${clips.length === 1 ? '' : 's'}`, 'success');
         load();
       } catch (e) {

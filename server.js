@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Nexora Labs. All rights reserved.
 // Contact: thenexoralabstoday@gmail.com
 
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
@@ -21,7 +20,19 @@ import { generateId, now } from './src/db.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5173;
+
+process.on('uncaughtException', (err) => { console.error('uncaughtException:', err); });
+process.on('unhandledRejection', (err) => { console.error('unhandledRejection:', err); });
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.raw({ type: 'application/json' }));
+app.use('/output', express.static(path.resolve('./output')));
+app.use('/storage', express.static(path.resolve('./storage')));
+app.use('/app', express.static(path.join(__dirname, 'app'), { maxAge: '1h' }));
+app.use('/landing', express.static(path.join(__dirname, 'landing')));
+
+const PORT = parseInt(process.env.PORT || '5173', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'clipforge-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -1350,56 +1361,62 @@ async function runJob(id, body, pushProgress) {
 }
 
 export function startUi() {
-  const persisted = readJobs();
-  persisted.forEach(job => {
-    if (job.status === 'running' || job.status === 'queued') {
-      job.status = 'queued';
-    }
-    JOBS.set(job.id, job);
-  });
-
-  const interrupted = persisted.filter(j => j.status === 'running' || j.status === 'queued');
-  if (interrupted.length > 0) {
-    console.log(`resuming ${interrupted.length} interrupted job(s)`);
-    interrupted.forEach(job => {
-      const workDir = path.resolve(`./output/${job.id}`);
-      const statePath = path.join(workDir, 'job.json');
-      let canResume = false;
-      if (fs.existsSync(statePath)) {
-        try {
-          const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-          const steps = ['download', 'transcribe', 'highlights', 'captions', 'render'];
-          const lastStep = state.step;
-          const stepIdx = steps.indexOf(lastStep);
-          canResume = stepIdx >= 0 && stepIdx < steps.length - 1;
-        } catch {}
+  try {
+    const persisted = readJobs();
+    persisted.forEach(job => {
+      if (job.status === 'running' || job.status === 'queued') {
+        job.status = 'queued';
       }
-
-      if (canResume) {
-        const body = job.body || {};
-        runJob(job.id, { ...body, resume: true }).then(() => {
-          const j = JOBS.get(job.id);
-          if (j && j.status === 'done' && j.minutesUsed) {
-            const user = getUser(j.userId);
-            if (user) {
-              updateUser(j.userId, {
-                minutesUsed: (user.minutesUsed || 0) + j.minutesUsed,
-                clipsCreated: (user.clipsCreated || 0) + (j.clipsCount || 0),
-              });
-            }
-          }
-        }).catch(() => {});
-      } else {
-        job.status = 'error';
-        job.error = 'Cannot resume: no recoverable state found';
-        persistJob(job);
-      }
+      JOBS.set(job.id, job);
     });
-  }
 
-  app.listen(PORT, () => {
-    console.log(`ClipForge UI running at http://localhost:${PORT}`);
-  });
+    const interrupted = persisted.filter(j => j.status === 'running' || j.status === 'queued');
+    if (interrupted.length > 0) {
+      console.log(`resuming ${interrupted.length} interrupted job(s)`);
+      interrupted.forEach(job => {
+        const workDir = path.resolve(`./output/${job.id}`);
+        const statePath = path.join(workDir, 'job.json');
+        let canResume = false;
+        if (fs.existsSync(statePath)) {
+          try {
+            const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+            const steps = ['download', 'transcribe', 'highlights', 'captions', 'render'];
+            const lastStep = state.step;
+            const stepIdx = steps.indexOf(lastStep);
+            canResume = stepIdx >= 0 && stepIdx < steps.length - 1;
+          } catch {}
+        }
+
+        if (canResume) {
+          const body = job.body || {};
+          runJob(job.id, { ...body, resume: true }).then(() => {
+            const j = JOBS.get(job.id);
+            if (j && j.status === 'done' && j.minutesUsed) {
+              const user = getUser(j.userId);
+              if (user) {
+                updateUser(j.userId, {
+                  minutesUsed: (user.minutesUsed || 0) + j.minutesUsed,
+                  clipsCreated: (user.clipsCreated || 0) + (j.clipsCount || 0),
+                });
+              }
+            }
+          }).catch((e) => console.error('resume failed:', e));
+        } else {
+          job.status = 'error';
+          job.error = 'Cannot resume: no recoverable state found';
+          persistJob(job);
+        }
+      });
+    }
+
+    const server = app.listen(PORT, () => {
+      console.log(`ClipForge UI running at http://localhost:${PORT}`);
+    });
+    server.on('error', (err) => { console.error('listen error:', err); process.exit(1); });
+  } catch (e) {
+    console.error('startup failed:', e);
+    process.exit(1);
+  }
 }
 
 if (isMain) {

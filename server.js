@@ -885,6 +885,27 @@ app.get('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => {
   res.json({ project: req.project });
 });
 
+app.delete('/api/projects/:id', authMiddleware, projectOwnership, (req, res) => {
+  try {
+    const projectDir = getProjectDir(req.project.id);
+    if (fs.existsSync(projectDir)) {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
+
+    let clips = readClips();
+    clips = clips.filter(c => c.projectId !== req.project.id);
+    writeClips(clips);
+
+    let projects = readProjects();
+    projects = projects.filter(p => p.id !== req.project.id);
+    writeProjects(projects);
+
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
 app.post('/api/projects/:id/source', authMiddleware, projectOwnership, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'No token' });

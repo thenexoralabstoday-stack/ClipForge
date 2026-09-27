@@ -73,10 +73,12 @@
     $('actions').innerHTML = `
       ${!hasSource ? '<button class="btn btn--primary" id="attach">Attach source</button>' : '<button class="btn" id="attach">Replace source</button>'}
       ${hasSource ? `<button class="btn btn--primary" id="analyze">${clips.length ? 'Re-analyse' : 'Analyse video'}</button>` : ''}
-      ${clips.length ? `<button class="btn" id="renderAll">Render all</button>` : ''}`;
+      ${clips.length ? `<button class="btn" id="renderAll">Render all</button>` : ''}
+      <button class="btn btn--ghost btn--sm" id="deleteProject" style="color:var(--bad)">Delete project</button>`;
     $('attach').onclick = openAttach;
     const an = $('analyze'); if (an) an.onclick = analyze;
     const ra = $('renderAll'); if (ra) ra.onclick = renderAll;
+    const dp = $('deleteProject'); if (dp) dp.onclick = deleteProject;
     if (p.error) CF.toast(p.error, 'error', 6000);
   }
 
@@ -182,6 +184,17 @@
       CF.busy(btn, false);
       setTimeout(() => { $('progress').hidden = true; }, 1500);
       load();
+    }
+  }
+
+  async function deleteProject() {
+    if (!await CF.confirm('Delete this project and all its clips? This cannot be undone.', { label: 'Delete project' })) return;
+    try {
+      await CF.api(`/projects/${id}`, { method: 'DELETE' });
+      CF.toast('Project deleted', 'success');
+      location.href = '/projects.html';
+    } catch (e) {
+      CF.toast(e.message, 'error', 6000);
     }
   }
 

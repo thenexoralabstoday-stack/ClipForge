@@ -59,6 +59,7 @@
           </div>
           <div class="row" style="margin-top:12px">
             <button class="btn btn--sm" data-render="${c.id}">${c.renderStatus === 'done' ? 'Re-render' : 'Render'}</button>
+            ${c.renderStatus === 'failed' ? `<button class="btn btn--sm" data-retry="${c.id}">Retry</button>` : ''}
             <button class="btn btn--ghost btn--sm" data-delete="${c.id}">Delete</button>
             <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=srt" download>SRT</a>
             <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=vtt" download>VTT</a>
@@ -68,6 +69,7 @@
       </div>`).join('');
     $('clips').querySelectorAll('input[data-f]').forEach(el => el.oninput = () => { dirty.add(+el.dataset.i); setState(`${dirty.size} unsaved`, 'warn'); });
     $('clips').querySelectorAll('[data-render]').forEach(b => b.onclick = () => renderClip(b.dataset.render, b));
+    $('clips').querySelectorAll('[data-retry]').forEach(b => b.onclick = () => renderClip(b.dataset.retry, b));
     $('clips').querySelectorAll('[data-delete]').forEach(b => b.onclick = () => deleteClip(b.dataset.delete));
     bindTimeline();
   }
@@ -94,7 +96,7 @@
     if (dirty.size) { CF.toast('Save your changes first so the render uses them', 'info'); return; }
     CF.busy(b, true);
     try { await CF.api(`/clips/${id}/render`, { method: 'POST' }); CF.toast('Clip rendered', 'success'); load(); }
-    catch (e) { CF.toast(e.message, 'error', 6000); CF.busy(b, false); }
+    catch (e) { CF.toast(e.message || 'Render failed', 'error', 6000); CF.busy(b, false); }
   }
   async function deleteClip(id) {
     if (!await CF.confirm('Delete this clip?', { label: 'Delete' })) return;

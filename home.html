@@ -208,9 +208,14 @@
           if (j.status === 'done') {
             stop(); CF.busy(btn, false); setState('done', 'ok'); $('jobProgressBar').style.width = '100%'; $('jobProgressText').textContent = 'Done';
             append('done — ' + (j.clips?.length || 0) + ' clips', 'ok'); renderResults(j.clips || [], job.id); loadUsage(); CF.toast('Clips are ready', 'success');
-          } else if (j.status === 'error') {
+          } else           if (j.status === 'error') {
             stop(); CF.busy(btn, false); setState('failed', 'bad'); $('jobProgressBar').style.width = '0%'; $('jobProgressText').textContent = 'Failed';
-            append('error: ' + (j.error || 'unknown'), 'bad'); CF.toast(j.error || 'Job failed', 'error');
+            append('error: ' + (j.error || 'unknown'), 'bad');
+            const retryBtn = document.createElement('button');
+            retryBtn.className = 'btn btn--sm'; retryBtn.textContent = 'Retry';
+            retryBtn.onclick = () => { retryBtn.disabled = true; retryBtn.textContent = 'Retrying…'; startJob(input, body).then(() => retryBtn.remove()).catch(() => { retryBtn.disabled = false; retryBtn.textContent = 'Retry'; }); };
+            $('jobProgress').appendChild(retryBtn);
+            CF.toast(j.error || 'Job failed', 'error');
           }
         } catch (e) {
           stop(); CF.busy(btn, false); setState('disconnected', 'bad'); append('polling error: ' + e.message, 'bad');

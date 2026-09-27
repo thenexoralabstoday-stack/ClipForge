@@ -19,13 +19,25 @@ export class AIProvider {
 }
 
 export class ClipAnalysisService extends AIProvider {
-  async analyzeVideo(transcript, metadata) {
+  async analyzeVideo(transcript, metadata, preferences = {}, feedback = []) {
     const { transcriptText, timedTranscript, title, duration } = this.prepareTranscript(transcript);
-    
+    const focusKeywords = (preferences.focusKeywords || []).filter(Boolean);
+    const avoidKeywords = (preferences.avoidKeywords || []).filter(Boolean);
+    const preferredLength = preferences.preferredLength || {};
+    const tone = preferences.tone || '';
+    const positiveFeedback = feedback.filter(f => f.rating === 'up').slice(0, 5);
+    const negativeFeedback = feedback.filter(f => f.rating === 'down').slice(0, 5);
+
     const prompt = `Analyze this ${Math.round(duration)}s video transcript and identify the best moments for short-form clips.
 
 TRANSCRIPT:
 ${timedTranscript}
+
+${focusKeywords.length ? `FOCUS TOPICS/KEYWORDS: ${focusKeywords.join(', ')}` : ''}
+${avoidKeywords.length ? `AVOID TOPICS/KEYWORDS: ${avoidKeywords.join(', ')}` : ''}
+${tone ? `TONE/PREFERENCE: ${tone}` : ''}
+${positiveFeedback.length ? `USER LIKED CLIPS: ${positiveFeedback.map(f => `"${f.title || 'clip'}"`).join(', ')} — find similar moments.` : ''}
+${negativeFeedback.length ? `USER DISLIKED CLIPS: ${negativeFeedback.map(f => `"${f.title || 'clip'}"`).join(', ')} — avoid similar moments.` : ''}
 
 Return JSON with:
 {

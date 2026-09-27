@@ -1024,7 +1024,12 @@ app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (r
     const projectDir = getProjectDir(req.project.id);
     const transcript = await transcribeSource(req.project.sourceFile, { model: 'base', workDir: projectDir });
     const analysisService = new ClipAnalysisService();
-    let result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name });
+    const user = getUser(req.user.id);
+    const preferences = user?.settings?.aiPreferences || {};
+    const clips = readClips().filter(c => c.projectId === req.project.id);
+    const feedback = clips.flatMap(c => c.feedback || []);
+    
+    let result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name }, preferences, feedback);
     
     if (!result.candidates || result.candidates.length === 0) {
       result = analysisService.fallbackAnalysis(transcript);
@@ -1217,6 +1222,17 @@ app.delete('/api/clips/:id', authMiddleware, clipOwnership, (req, res) => {
   req.clips.splice(req.clipIndex, 1);
   writeClips(req.clips);
   res.json({ ok: true });
+});
+
+app.post('/api/clips/:id/feedback', authMiddleware, clipOwnership, (req, res) => {
+  const feedback = Array.isArray(req.body?.feedback) ? req.body.feedback : [];
+  const clips = readClips();
+  const idx = clips.findIndex(c => c.id === req.params.id && c.userId === req.user.id);
+  if (idx === -1) return res.status(404).json({ error: 'Clip not found' });
+  
+  clips[idx] = { ...clips[idx], feedback, updatedAt: now() };
+  writeClips(clips);
+  res.json({ clip: clips[idx] });
 });
 
 app.post('/api/clips/:id/generate-metadata', async (req, res) => {

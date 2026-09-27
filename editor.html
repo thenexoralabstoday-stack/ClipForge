@@ -42,11 +42,15 @@
 
   function render() {
     if (!clips.length) { $('clips').innerHTML = '<div class="empty"><h3>No clips to edit</h3><p>Analyse the project first to generate clips.</p></div>'; return; }
-    $('clips').innerHTML = clips.map((c, i) => `
+    $('clips').innerHTML = clips.map((c, i) => {
+      const feedback = c.feedback || [];
+      const hasUp = feedback.some(f => f.action === 'up');
+      const hasDown = feedback.some(f => f.action === 'down');
+      return `
       <div class="clip" data-clip="${CF.esc(c.id)}">
         <div class="clip__thumb">${c.renderPath ? `<video src="${CF.esc(c.renderPath)}" preload="metadata" muted playsinline></video>` : '<svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg>'}</div>
         <div style="min-width:0">
-          <div class="row row--between"><span class="mono muted">clip ${i + 1}</span><span class="row">${CF.badge(c.renderStatus || 'pending')}<span class="score">${c.score ?? '—'}<small> /100</small></span></span></div>
+          <div class="row row--between"><span class="mono muted">clip ${i + 1}</span><span class="row">${CF.badge(c.renderStatus || 'pending')}${hasUp ? '<span class="badge badge--ok">liked</span>' : ''}${hasDown ? '<span class="badge badge--bad">disliked</span>' : ''}<span class="score">${c.score ?? '—'}<small> /100</small></span></span></div>
           <div class="clip__edit">
             <div class="field"><label>Title</label><input class="input" data-i="${i}" data-f="title" value="${CF.esc(c.title || '')}" placeholder="Title"></div>
             <div class="field"><label>Hook</label><input class="input" data-i="${i}" data-f="hook" value="${CF.esc(c.hook || '')}" placeholder="First line on screen"></div>
@@ -60,16 +64,33 @@
           <div class="row" style="margin-top:12px">
             <button class="btn btn--sm" data-render="${c.id}">${c.renderStatus === 'done' ? 'Re-render' : 'Render'}</button>
             ${c.renderStatus === 'failed' ? `<button class="btn btn--sm" data-retry="${c.id}">Retry</button>` : ''}
+            <button class="btn btn--ghost btn--sm" data-feedback="${c.id}" data-action="up" title="Good clip">👍</button>
+            <button class="btn btn--ghost btn--sm" data-feedback="${c.id}" data-action="down" title="Bad clip">👎</button>
             <button class="btn btn--ghost btn--sm" data-delete="${c.id}">Delete</button>
             <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=srt" download>SRT</a>
             <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=vtt" download>VTT</a>
             <a class="btn btn--ghost btn--sm" href="/api/clips/${c.id}/export?format=md" download>Post</a>
           </div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     $('clips').querySelectorAll('input[data-f]').forEach(el => el.oninput = () => { dirty.add(+el.dataset.i); setState(`${dirty.size} unsaved`, 'warn'); });
     $('clips').querySelectorAll('[data-render]').forEach(b => b.onclick = () => renderClip(b.dataset.render, b));
     $('clips').querySelectorAll('[data-retry]').forEach(b => b.onclick = () => renderClip(b.dataset.retry, b));
+    $('clips').querySelectorAll('[data-feedback]').forEach(b => b.onclick = async () => {
+      const clipId = b.dataset.feedback;
+      const action = b.dataset.action;
+      const clip = clips.find(c => c.id === clipId);
+      if (!clip) return;
+      const current = clip.feedback || [];
+      const updated = current.filter(f => f.action !== action);
+      if (!updated.length || updated[updated.length - 1]?.action !== action) {
+        updated.push({ action, createdAt: Date.now() });
+      }
+      await CF.api(`/clips/${clipId}/feedback`, { method: 'POST', body: JSON.stringify({ feedback: updated }) });
+      clip.feedback = updated;
+      CF.toast(action === 'up' ? 'Marked as good clip' : 'Marked as bad clip', 'success');
+    });
     $('clips').querySelectorAll('[data-delete]').forEach(b => b.onclick = () => deleteClip(b.dataset.delete));
     bindTimeline();
   }

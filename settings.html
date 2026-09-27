@@ -20,6 +20,7 @@
     <a class="tab" href="#profile" role="tab" data-tab="profile">Profile</a>
     <a class="tab" href="#connections" role="tab" data-tab="connections">Connections</a>
     <a class="tab" href="#defaults" role="tab" data-tab="defaults">Defaults</a>
+    <a class="tab" href="#ai" role="tab" data-tab="ai">AI</a>
     <a class="tab" href="#security" role="tab" data-tab="security">Security</a>
   </nav>
 
@@ -77,6 +78,21 @@
     </div>
   </section>
 
+  <!-- AI Preferences -->
+  <section class="tabpanel" id="tab-ai" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel__head"><div><h2>AI preferences</h2><p>Teach ClipForge what you like. These preferences are used when analysing projects and scoring clips.</p></div></div>
+      <div class="panel__body">
+        <div class="fields">
+          <div class="field"><label for="aiFocus">Focus topics / keywords</label><input class="input" id="aiFocus" placeholder="e.g. tech, fitness, comedy"><span class="help">Comma-separated. The AI will prioritize clips matching these.</span></div>
+          <div class="field"><label for="aiAvoid">Avoid topics / keywords</label><input class="input" id="aiAvoid" placeholder="e.g. politics, drama"><span class="help">Comma-separated. The AI will avoid clips matching these.</span></div>
+          <div class="field"><label for="aiTone">Preferred tone / notes</label><input class="input" id="aiTone" placeholder="e.g. high-energy, educational, casual"><span class="help">Free-form instruction for the AI.</span></div>
+        </div>
+      </div>
+      <div class="panel__foot"><button class="btn btn--primary" id="aiSave">Save AI preferences</button></div>
+    </div>
+  </section>
+
   <!-- Security -->
   <section class="tabpanel" id="tab-security" role="tabpanel" hidden>
     <div class="grid grid--2" style="align-items:start">
@@ -115,7 +131,7 @@
   const $ = id => document.getElementById(id);
 
   /* tabs */
-  const TABS = ['profile', 'connections', 'defaults', 'security'];
+  const TABS = ['profile', 'connections', 'defaults', 'ai', 'security'];
   function showTab(name) {
     if (!TABS.includes(name)) name = 'profile';
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
@@ -213,6 +229,22 @@
     catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy($('sSave'), false); }
   };
   $('sSignout').onclick = CF.logout;
+
+  /* AI preferences */
+  const FALLBACK_AI = { focusKeywords: [], avoidKeywords: [], tone: '' };
+  const fillAi = s => { $('aiFocus').value = (s.aiPreferences?.focusKeywords || []).join(', '); $('aiAvoid').value = (s.aiPreferences?.avoidKeywords || []).join(', '); $('aiTone').value = s.aiPreferences?.tone || ''; };
+  const readAi = () => ({ focusKeywords: $('aiFocus').value.split(',').map(s => s.trim()).filter(Boolean), avoidKeywords: $('aiAvoid').value.split(',').map(s => s.trim()).filter(Boolean), tone: $('aiTone').value.trim() });
+  try { fillAi(await CF.settings.get()); } catch { fillAi(FALLBACK_AI); }
+  $('aiSave').onclick = async () => {
+    CF.busy($('aiSave'), true);
+    try {
+      const current = await CF.settings.get();
+      const patch = { aiPreferences: readAi() };
+      const merged = { ...current, ...patch };
+      await CF.api('/me/settings', { method: 'PATCH', body: JSON.stringify(merged) });
+      CF.toast('AI preferences saved', 'success');
+    } catch (e) { CF.toast(e.message, 'error'); } finally { CF.busy($('aiSave'), false); }
+  };
 })();
 </script>
 </body>

@@ -936,7 +936,11 @@ app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (r
     const projectDir = getProjectDir(req.project.id);
     const transcript = await transcribeSource(req.project.sourceFile, { model: 'base', workDir: projectDir });
     const analysisService = new ClipAnalysisService();
-    const result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name });
+    let result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name });
+    
+    if (!result.candidates || result.candidates.length === 0) {
+      result = analysisService.fallbackAnalysis(transcript);
+    }
     
     const clips = readClips();
     const existingCount = clips.filter(c => c.projectId === req.project.id).length;
@@ -974,8 +978,10 @@ app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (r
     projects[pIdx].currentStep = 'analyzed';
     projects[pIdx].analysis = result;
     projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
-    projects[pIdx].status = 'clips_ready';
-    projects[pIdx].currentStep = 'clips_ready';
+    if (saved.length > 0) {
+      projects[pIdx].status = 'clips_ready';
+      projects[pIdx].currentStep = 'clips_ready';
+    }
     projects[pIdx].updatedAt = now();
     writeProjects(projects);
     
@@ -1202,7 +1208,7 @@ app.post('/api/clips/:id/render', async (req, res) => {
       });
       
       const outIdx = clips.findIndex(c => c.id === clip.id);
-      clips[outIdx] = { ...clips[outIdx], renderStatus: 'done', renderPath: `/storage/${project.id}/${clip.id}.mp4`, updatedAt: now() };
+      clips[outIdx] = { ...clips[outIdx], renderStatus: 'done', renderPath: `/storage/${project.id}/clips/${clip.id}.mp4`, updatedAt: now() };
       writeClips(clips);
       
       res.json({ ok: true, clip: clips[outIdx] });
@@ -1210,6 +1216,10 @@ app.post('/api/clips/:id/render', async (req, res) => {
       const outIdx = clips.findIndex(c => c.id === clip.id);
       clips[outIdx] = { ...clips[outIdx], renderStatus: 'failed', error: e.message, updatedAt: now() };
       writeClips(clips);
+      const outFile = path.join(clipDir, `${clip.id}.mp4`);
+      if (fs.existsSync(outFile)) {
+        try { fs.unlinkSync(outFile); } catch {}
+      }
       res.status(500).json({ error: e.message });
     }
   } catch (e) {
@@ -1226,52 +1236,64 @@ app.post('/api/projects/:id/render-all', authMiddleware, projectOwnership, async
   if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
   
   const results = [];
-  for (let i = 0; i < clips.length; i++) {
-    const clip = clips[i];
-    const idx = readClips().findIndex(c => c.id === clip.id);
-    if (idx !== -1) {
-      const all = readClips();
-      all[idx] = { ...all[idx], renderStatus: 'rendering', updatedAt: now() };
-      writeClips(all);
-    }
-    
-    try {
-      const { renderClip } = await import('./src/render.js');
-      const outFile = path.join(clipDir, `${clip.id}.mp4`);
-      await renderClip({
-        source: req.project.sourceFile,
-        clip: { start: clip.start, end: clip.end, words: clip.captions?.words || [] },
-        clipDir,
-        index: i,
-        total: clips.length,
-        style: clip.captionStyle || 'classic',
-        reframe: clip.reframe || 'center'
-      });
+  const concurrency = 2;
+  
+  for (let i = 0; i < clips.length; i += concurrency) {
+    const batch = clips.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(batch.map(async (clip, batchIndex) => {
+      const globalIndex = i + batchIndex;
+      const idx = readClips().findIndex(c => c.id === clip.id);
+      if (idx !== -1) {
+        const all = readClips();
+        all[idx] = { ...all[idx], renderStatus: 'rendering', updatedAt: now() };
+        writeClips(all);
+      }
       
-      const all = readClips();
-      const outIdx = all.findIndex(c => c.id === clip.id);
-      if (outIdx !== -1) {
-        all[outIdx] = { ...all[outIdx], renderStatus: 'done', renderPath: `/storage/${req.project.id}/${clip.id}.mp4`, updatedAt: now() };
-        writeClips(all);
+      try {
+        const { renderClip } = await import('./src/render.js');
+        const outFile = path.join(clipDir, `${clip.id}.mp4`);
+        await renderClip({
+          source: req.project.sourceFile,
+          clip: { start: clip.start, end: clip.end, words: clip.captions?.words || [] },
+          clipDir,
+          index: globalIndex,
+          total: clips.length,
+          style: clip.captionStyle || 'classic',
+          reframe: clip.reframe || 'center'
+        });
+        
+        const all = readClips();
+        const outIdx = all.findIndex(c => c.id === clip.id);
+        if (outIdx !== -1) {
+          all[outIdx] = { ...all[outIdx], renderStatus: 'done', renderPath: `/storage/${req.project.id}/clips/${clip.id}.mp4`, updatedAt: now() };
+          writeClips(all);
+        }
+        return { clip: clip.id, ok: true, path: `/storage/${req.project.id}/clips/${clip.id}.mp4` };
+      } catch (e) {
+        const all = readClips();
+        const errIdx = all.findIndex(c => c.id === clip.id);
+        if (errIdx !== -1) {
+          all[errIdx] = { ...all[errIdx], renderStatus: 'failed', error: e.message, updatedAt: now() };
+          writeClips(all);
+        }
+        const outFile = path.join(clipDir, `${clip.id}.mp4`);
+        if (fs.existsSync(outFile)) {
+          try { fs.unlinkSync(outFile); } catch {}
+        }
+        return { clip: clip.id, ok: false, error: e.message };
       }
-      results.push({ clip: clip.id, ok: true, path: `/storage/${req.project.id}/${clip.id}.mp4` });
-    } catch (e) {
-      const all = readClips();
-      const errIdx = all.findIndex(c => c.id === clip.id);
-      if (errIdx !== -1) {
-        all[errIdx] = { ...all[errIdx], renderStatus: 'failed', error: e.message, updatedAt: now() };
-        writeClips(all);
-      }
-      results.push({ clip: clip.id, ok: false, error: e.message });
-    }
+    }));
+    
+    batchResults.forEach(r => results.push(r.status === 'fulfilled' ? r.value : { clip: 'unknown', ok: false, error: 'Settled rejected' }));
   }
   
   const projects = readProjects();
   const pIdx = projects.findIndex(p => p.id === req.project.id);
   if (pIdx !== -1) {
     projects[pIdx].rendersCount = (projects[pIdx].rendersCount || 0) + results.filter(r => r.ok).length;
-    projects[pIdx].status = 'rendered';
-    projects[pIdx].currentStep = 'rendered';
+    const allDone = results.every(r => r.ok);
+    projects[pIdx].status = allDone ? 'rendered' : 'rendering';
+    projects[pIdx].currentStep = allDone ? 'rendered' : 'rendering';
     projects[pIdx].updatedAt = now();
     writeProjects(projects);
   }

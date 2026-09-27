@@ -118,10 +118,9 @@
       project = (await CF.api(`/projects/${id}`)).project;
       clips = (await CF.api(`/projects/${id}/clips`)).clips || [];
       renderHeader(); renderClips();
-      const projectDir = project?.id ? `storage/${project.id}` : '';
-      const hasTranscript = !!(project && project.status === 'analyzed');
+      const hasAnalysis = !!(project && (project.analysis || project.status === 'analyzed' || project.status === 'clips_ready'));
       const memeBtn = $('memeSounds');
-      if (memeBtn) memeBtn.hidden = !hasTranscript;
+      if (memeBtn) memeBtn.hidden = !hasAnalysis;
     } catch (e) { CF.toast(e.message, 'error'); $('name').textContent = 'Project not found'; $('clips').innerHTML = `<div class="empty small">${CF.esc(e.message)}</div>`; }
   }
 

@@ -938,15 +938,48 @@ app.post('/api/projects/:id/analyze', authMiddleware, projectOwnership, async (r
     const analysisService = new ClipAnalysisService();
     const result = await analysisService.analyzeVideo(transcript, { duration: transcript.segments?.[transcript.segments.length - 1]?.end || 0, title: req.project.name });
     
+    const clips = readClips();
+    const existingCount = clips.filter(c => c.projectId === req.project.id).length;
+    
+    const saved = [];
+    for (let i = 0; i < (result.candidates || []).length; i++) {
+      const c = result.candidates[i];
+      const clip = {
+        id: generateId(),
+        projectId: req.project.id,
+        userId: req.user.id,
+        title: c.title || `Clip ${i + 1}`,
+        hook: c.hook || '',
+        start: c.start || 0,
+        end: c.end || 0,
+        score: c.score || c.confidence ? Math.round((c.confidence || 0) * 100) : null,
+        reason: c.reason || '',
+        captions: null,
+        description: c.hook || '',
+        hashtags: [],
+        renderStatus: 'pending',
+        renderPath: null,
+        status: 'created',
+        createdAt: now(),
+        updatedAt: now()
+      };
+      clips.push(clip);
+      saved.push(clip);
+    }
+    writeClips(clips);
+    
     const projects = readProjects();
     const pIdx = projects.findIndex(p => p.id === req.project.id);
     projects[pIdx].status = 'analyzed';
     projects[pIdx].currentStep = 'analyzed';
     projects[pIdx].analysis = result;
+    projects[pIdx].clipsCount = (projects[pIdx].clipsCount || 0) + saved.length;
+    projects[pIdx].status = 'clips_ready';
+    projects[pIdx].currentStep = 'clips_ready';
     projects[pIdx].updatedAt = now();
     writeProjects(projects);
     
-    res.json({ analysis: result, project: projects[pIdx] });
+    res.json({ analysis: result, clips: saved, project: projects[pIdx] });
   } catch (e) {
     console.error('analysis failed:', e);
     res.status(500).json({ error: e.message });
@@ -1182,6 +1215,68 @@ app.post('/api/clips/:id/render', async (req, res) => {
   } catch (e) {
     fail(res, e);
   }
+});
+
+app.post('/api/projects/:id/render-all', authMiddleware, projectOwnership, async (req, res) => {
+  const clips = readClips().filter(c => c.projectId === req.project.id && c.renderStatus !== 'done');
+  if (!clips.length) return res.json({ ok: true, message: 'No clips to render', results: [] });
+  
+  const projectDir = getProjectDir(req.project.id);
+  const clipDir = path.join(projectDir, 'clips');
+  if (!fs.existsSync(clipDir)) fs.mkdirSync(clipDir, { recursive: true });
+  
+  const results = [];
+  for (let i = 0; i < clips.length; i++) {
+    const clip = clips[i];
+    const idx = readClips().findIndex(c => c.id === clip.id);
+    if (idx !== -1) {
+      const all = readClips();
+      all[idx] = { ...all[idx], renderStatus: 'rendering', updatedAt: now() };
+      writeClips(all);
+    }
+    
+    try {
+      const { renderClip } = await import('./src/render.js');
+      const outFile = path.join(clipDir, `${clip.id}.mp4`);
+      await renderClip({
+        source: req.project.sourceFile,
+        clip: { start: clip.start, end: clip.end, words: clip.captions?.words || [] },
+        clipDir,
+        index: i,
+        total: clips.length,
+        style: clip.captionStyle || 'classic',
+        reframe: clip.reframe || 'center'
+      });
+      
+      const all = readClips();
+      const outIdx = all.findIndex(c => c.id === clip.id);
+      if (outIdx !== -1) {
+        all[outIdx] = { ...all[outIdx], renderStatus: 'done', renderPath: `/storage/${req.project.id}/${clip.id}.mp4`, updatedAt: now() };
+        writeClips(all);
+      }
+      results.push({ clip: clip.id, ok: true, path: `/storage/${req.project.id}/${clip.id}.mp4` });
+    } catch (e) {
+      const all = readClips();
+      const errIdx = all.findIndex(c => c.id === clip.id);
+      if (errIdx !== -1) {
+        all[errIdx] = { ...all[errIdx], renderStatus: 'failed', error: e.message, updatedAt: now() };
+        writeClips(all);
+      }
+      results.push({ clip: clip.id, ok: false, error: e.message });
+    }
+  }
+  
+  const projects = readProjects();
+  const pIdx = projects.findIndex(p => p.id === req.project.id);
+  if (pIdx !== -1) {
+    projects[pIdx].rendersCount = (projects[pIdx].rendersCount || 0) + results.filter(r => r.ok).length;
+    projects[pIdx].status = 'rendered';
+    projects[pIdx].currentStep = 'rendered';
+    projects[pIdx].updatedAt = now();
+    writeProjects(projects);
+  }
+  
+  res.json({ ok: true, results });
 });
 
 // Social accounts

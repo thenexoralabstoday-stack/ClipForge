@@ -72,9 +72,11 @@
     const hasSource = !!p.sourceFile;
     $('actions').innerHTML = `
       ${!hasSource ? '<button class="btn btn--primary" id="attach">Attach source</button>' : '<button class="btn" id="attach">Replace source</button>'}
-      ${hasSource ? `<button class="btn btn--primary" id="analyze">${clips.length ? 'Re-analyse' : 'Analyse video'}</button>` : ''}`;
+      ${hasSource ? `<button class="btn btn--primary" id="analyze">${clips.length ? 'Re-analyse' : 'Analyse video'}</button>` : ''}
+      ${clips.length ? `<button class="btn" id="renderAll">Render all</button>` : ''}`;
     $('attach').onclick = openAttach;
     const an = $('analyze'); if (an) an.onclick = analyze;
+    const ra = $('renderAll'); if (ra) ra.onclick = renderAll;
     if (p.error) CF.toast(p.error, 'error', 6000);
   }
 
@@ -144,7 +146,13 @@
       if (src === 'url') { payload.sourceUrl = body.querySelector('#aUrl').value.trim(); if (!payload.sourceUrl) throw new Error('Paste a video link'); }
       else { if (!file) throw new Error('Choose a video file'); payload.fileName = file.name; payload.fileBuffer = Array.from(new Uint8Array(await file.arrayBuffer())); }
       await CF.api(`/projects/${id}/source`, { method: 'POST', body: JSON.stringify(payload) });
-      CF.toast('Source attached', 'success'); load();
+      CF.toast('Source attached', 'success');
+      const p = (await CF.api(`/projects/${id}`)).project;
+      if (!p?.analysis) {
+        setTimeout(() => analyze(), 500);
+      } else {
+        load();
+      }
     } }] });
   }
 
@@ -155,6 +163,27 @@
     try { await CF.api(`/projects/${id}/analyze`, { method: 'POST' }); $('progressBar').style.width = '100%'; $('progressText').textContent = 'Analysis complete.'; CF.toast('Analysis complete', 'success'); }
     catch (e) { CF.toast(e.message, 'error', 6000); $('progressText').textContent = e.message; }
     finally { CF.busy(btn, false); setTimeout(() => { $('progress').hidden = true; }, 1500); load(); }
+  }
+
+  async function renderAll() {
+    const btn = $('renderAll'); CF.busy(btn, true);
+    $('progress').hidden = false; $('progressText').textContent = 'Rendering all clips — this can take a few minutes.';
+    $('progressBar').style.width = '10%';
+    try {
+      const result = await CF.api(`/projects/${id}/render-all`, { method: 'POST' });
+      const done = result.results?.filter(r => r.ok).length || 0;
+      const total = result.results?.length || 0;
+      $('progressBar').style.width = '100%';
+      $('progressText').textContent = `Rendered ${done}/${total} clips.`;
+      CF.toast(`Rendered ${done}/${total} clips`, 'success');
+    } catch (e) {
+      CF.toast(e.message, 'error', 6000);
+      $('progressText').textContent = e.message;
+    } finally {
+      CF.busy(btn, false);
+      setTimeout(() => { $('progress').hidden = true; }, 1500);
+      load();
+    }
   }
 
   async function renderClip(clipId, btn) {

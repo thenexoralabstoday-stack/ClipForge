@@ -64,7 +64,7 @@ export async function fetchSource(input, workDir) {
   if (process.platform === 'win32') {
     const nodeCmd = await findCommand('node');
     if (nodeCmd) {
-      ytArgs = ['--js-runtime', nodeCmd, ...baseArgs];
+      ytArgs = ['--js-runtimes', nodeCmd, ...baseArgs];
     }
   }
 

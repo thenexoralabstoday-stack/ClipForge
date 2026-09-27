@@ -28,13 +28,18 @@ process.on('unhandledRejection', (err) => { console.error('unhandledRejection:',
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '200mb' }));
 app.use(express.raw({ type: 'application/json' }));
+app.use((req, res, next) => { req.setTimeout(300000); next(); });
 app.use('/output', express.static(path.resolve('./output')));
 app.use('/storage', express.static(path.resolve('./storage')));
 app.use('/app', express.static(path.join(__dirname, 'app'), { maxAge: '1h' }));
 app.use('/landing', express.static(path.join(__dirname, 'landing')));
 
 const PORT = parseInt(process.env.PORT || '5173', 10);
-const JWT_SECRET = process.env.JWT_SECRET || 'clipforge-secret-change-in-production';
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is required');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const stripe = STRIPE_SECRET ? new Stripe(STRIPE_SECRET) : null;
@@ -81,6 +86,18 @@ function clipOwnership(req, res, next) {
   req.clips = clips;
   req.clipIndex = clips.findIndex(c => c.id === req.params.id);
   next();
+}
+
+const ALLOWED_FILE_BASES = [
+  path.resolve('./output'),
+  path.resolve('./storage'),
+];
+
+function resolveSafeClipPath(clipPath) {
+  const fullPath = path.resolve(`.${clipPath}`);
+  const ok = ALLOWED_FILE_BASES.some(base => fullPath.startsWith(base + path.sep) || fullPath === base);
+  if (!ok) throw new Error('Invalid clip path');
+  return fullPath;
 }
 
 function ensureDataDir() {
@@ -157,14 +174,6 @@ function bootstrapAdmin() {
 }
 
 bootstrapAdmin();
-
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '200mb' }));
-app.use(express.raw({ type: 'application/json' }));
-app.use('/output', express.static(path.resolve('./output')));
-app.use('/storage', express.static(path.resolve('./storage')));
-app.use('/app', express.static(path.join(__dirname, 'app'), { maxAge: '1h' }));
-app.use('/landing', express.static(path.join(__dirname, 'landing')));
 
 // Only the page files are served from the repo root. Everything else (server.js, src/, data/, .env) stays private.
 const PAGES = ['index', 'home', 'projects', 'project', 'editor', 'publish', 'billing', 'settings', 'meme-sounds', 'connections', 'privacy', 'terms'];
@@ -669,7 +678,7 @@ app.post('/api/publish', async (req, res) => {
       return res.status(400).json({ error: `${platform} not connected. Connect it first.` });
     }
 
-    const fullPath = path.resolve(`.${clipPath}`);
+    const fullPath = resolveSafeClipPath(clipPath);
     if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'clip file not found' });
 
     const { uploadClip } = await import('./src/uploads.js');
@@ -1360,7 +1369,7 @@ app.post('/api/clips/:id/publish', async (req, res) => {
         }
         
         const clipPath = clip.renderPath || `/output/${clip.projectId}/clips/${clip.id}.mp4`;
-        const fullPath = path.resolve(`.${clipPath}`);
+        const fullPath = resolveSafeClipPath(clipPath);
         if (!fs.existsSync(fullPath)) {
           results.push({ platform, status: 'skipped', error: 'Rendered video not found' });
           continue;
@@ -1474,6 +1483,12 @@ async function runJob(id, body, pushProgress) {
     job.status = 'error';
     job.error = e.message;
     persistJob(job);
+    const workDir = body.workDir || path.resolve(`./output/${id}`);
+    if (fs.existsSync(workDir)) {
+      try {
+        fs.rmSync(workDir, { recursive: true, force: true });
+      } catch {}
+    }
   }
 }
 
@@ -1529,6 +1544,7 @@ export function startUi() {
     const server = app.listen(PORT, () => {
       console.log(`ClipForge UI running at http://localhost:${PORT}`);
     });
+    server.setTimeout(300000);
     server.on('error', (err) => { console.error('listen error:', err); process.exit(1); });
   } catch (e) {
     console.error('startup failed:', e);

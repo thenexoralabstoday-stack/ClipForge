@@ -68,8 +68,11 @@ export async function downloadFromUrl(url, destPath) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-    const buffer = Buffer.from(await res.arrayBuffer());
-    fs.writeFileSync(destPath, buffer);
+    if (!res.body) throw new Error('Download response has no body');
+    await new Promise((resolve, reject) => {
+      const fileStream = fs.createWriteStream(destPath);
+      res.body.pipeTo(fileStream).then(resolve).catch(reject);
+    });
   } catch (e) {
     throw new Error(`Download failed: ${e.message}`);
   }
